@@ -38,6 +38,7 @@ import {
   useGetAllApplications,
   useGetAnalytics,
   useGetApplicationStages,
+  useGetContactInfo,
   useGetCourses,
   useGetReviews,
   useGetSubAdmins,
@@ -45,11 +46,14 @@ import {
   useIssueIdCard,
   useRejectApplication,
   useSetAdminCredentials,
+  useSetContactInfo,
   useUpdateApplicationStage,
   useUpdateCourse,
   useUpdateReview,
   useVerifyAdminCredentials,
 } from "@/hooks/useQueries";
+import type { ContactInfo } from "@/hooks/useQueries";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Award,
@@ -60,24 +64,34 @@ import {
   CreditCard,
   Edit2,
   Eye,
+  Facebook,
   FileText,
+  Globe,
+  Instagram,
   KeyRound,
   Loader2,
   Lock,
   LogOut,
+  Mail,
+  MapPin,
+  Phone,
   Plus,
+  RefreshCcw,
   Search,
   Settings,
   ShieldCheck,
   Trash2,
   TrendingUp,
+  Twitter,
   UserPlus,
   Users,
   XCircle,
   X as XIcon,
+  Youtube,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Course } from "../backend.d";
 import { Status } from "../backend.d";
 
@@ -507,6 +521,198 @@ function CoursesTab() {
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
+function ContactSettingsCard() {
+  const { data: contactInfo } = useGetContactInfo();
+  const setContactInfo = useSetContactInfo();
+  const [form, setForm] = useState<ContactInfo>({
+    phone: "",
+    email: "",
+    address: "",
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    youtube: "",
+  });
+  const [loaded, setLoaded] = useState(false);
+  const [msg, setMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Sync form with loaded data
+  if (contactInfo && !loaded) {
+    setForm(contactInfo);
+    setLoaded(true);
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(null);
+    try {
+      await setContactInfo.mutateAsync(form);
+      setMsg({
+        type: "success",
+        text: "Contact info updated successfully. Changes are live on the website.",
+      });
+    } catch {
+      setMsg({ type: "error", text: "Failed to update. Please try again." });
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-5">
+      <div className="flex items-center gap-2">
+        <Globe className="h-5 w-5" style={{ color: BRAND_BLUE }} />
+        <h3 className="font-bold text-foreground">Contact & Social Media</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Update the contact details and social media links shown on your website.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" /> Phone *
+            </Label>
+            <Input
+              value={form.phone}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, phone: e.target.value }))
+              }
+              placeholder="+91 7023628763"
+              required
+              data-ocid="contact.settings.input"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email *
+            </Label>
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, email: e.target.value }))
+              }
+              placeholder="skiltrixsupport@gmail.com"
+              required
+              data-ocid="contact.settings.input"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Address *
+          </Label>
+          <Input
+            value={form.address}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, address: e.target.value }))
+            }
+            placeholder="Sector 10, Malviya Nagar, Jaipur, Rajasthan"
+            required
+            data-ocid="contact.settings.input"
+          />
+        </div>
+        <div className="border-t border-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Social Media Links (optional)
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Facebook className="h-3.5 w-3.5 text-blue-600" /> Facebook
+              </Label>
+              <Input
+                value={form.facebook}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, facebook: e.target.value }))
+                }
+                placeholder="https://facebook.com/skiltrix"
+                data-ocid="contact.settings.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
+              </Label>
+              <Input
+                value={form.instagram}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, instagram: e.target.value }))
+                }
+                placeholder="https://instagram.com/skiltrix"
+                data-ocid="contact.settings.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Twitter className="h-3.5 w-3.5 text-sky-500" /> Twitter / X
+              </Label>
+              <Input
+                value={form.twitter}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, twitter: e.target.value }))
+                }
+                placeholder="https://twitter.com/skiltrix"
+                data-ocid="contact.settings.input"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
+              </Label>
+              <Input
+                value={form.youtube}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, youtube: e.target.value }))
+                }
+                placeholder="https://youtube.com/@skiltrix"
+                data-ocid="contact.settings.input"
+              />
+            </div>
+          </div>
+        </div>
+        {msg && (
+          <div
+            data-ocid={
+              msg.type === "success"
+                ? "contact.settings.success_state"
+                : "contact.settings.error_state"
+            }
+            className={`rounded-xl px-4 py-3 text-sm flex items-start gap-2 ${
+              msg.type === "success"
+                ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                : "bg-red-50 border border-red-200 text-red-700"
+            }`}
+          >
+            {msg.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            ) : (
+              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            )}
+            {msg.text}
+          </div>
+        )}
+        <Button
+          type="submit"
+          disabled={setContactInfo.isPending}
+          style={{ backgroundColor: BRAND_BLUE }}
+          className="w-full text-white rounded-xl gap-2"
+          data-ocid="contact.settings.submit_button"
+        >
+          {setContactInfo.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Globe className="h-4 w-4" />
+          )}
+          Save Contact Info
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function SettingsTab({ onLogout }: { onLogout: () => void }) {
   const setCredentials = useSetAdminCredentials();
   const [credForm, setCredForm] = useState({
@@ -892,6 +1098,9 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
       </div>
+
+      {/* Contact & Social Media Settings */}
+      <ContactSettingsCard />
     </div>
   );
 }
@@ -1394,16 +1603,31 @@ function ReviewsTab() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleAdd = async () => {
-    if (!addForm.name || !addForm.email || !addForm.feedback) return;
-    await addReview.mutateAsync(addForm);
-    setAddOpen(false);
-    setAddForm(EMPTY_REVIEW_INPUT);
+    if (!addForm.name || !addForm.email || !addForm.course || !addForm.feedback)
+      return;
+    try {
+      const result = await addReview.mutateAsync(addForm);
+      if ("err" in result) {
+        toast.error(result.err || "Failed to add review");
+        return;
+      }
+      setAddOpen(false);
+      setAddForm(EMPTY_REVIEW_INPUT);
+      toast.success("Review added successfully");
+    } catch {
+      toast.error("Failed to add review. Please try again.");
+    }
   };
 
   const handleEdit = async () => {
     if (!editReview) return;
-    await updateReview.mutateAsync({ id: editReview.id, input: editForm });
-    setEditReview(null);
+    try {
+      await updateReview.mutateAsync({ id: editReview.id, input: editForm });
+      setEditReview(null);
+      toast.success("Review updated");
+    } catch {
+      toast.error("Failed to update review. Please try again.");
+    }
   };
 
   const handleDelete = async () => {
@@ -1629,6 +1853,14 @@ function ReviewsTab() {
 
 function AdminContent({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+
+  const refreshAll = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries();
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
 
   return (
     <div className="min-h-screen bg-[oklch(0.97_0.01_257)] font-sans">
@@ -1685,6 +1917,19 @@ function AdminContent({ onLogout }: { onLogout: () => void }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshAll()}
+              disabled={isRefreshing}
+              data-ocid="admin.secondary_button"
+              className="rounded-full gap-2"
+            >
+              <RefreshCcw
+                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"

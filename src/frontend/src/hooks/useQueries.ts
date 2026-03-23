@@ -490,3 +490,58 @@ export function useDeleteReview() {
     },
   });
 }
+
+// ─── Contact Info (localStorage) ────────────────────────────────────────────
+
+const CONTACT_INFO_KEY = "skiltrix_contact_info";
+
+export interface ContactInfo {
+  phone: string;
+  email: string;
+  address: string;
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  youtube: string;
+}
+
+const DEFAULT_CONTACT: ContactInfo = {
+  phone: "+91 7023628763",
+  email: "skiltrixsupport@gmail.com",
+  address: "Sector 10, Malviya Nagar, Jaipur, Rajasthan",
+  facebook: "",
+  instagram: "",
+  twitter: "",
+  youtube: "",
+};
+
+function getStoredContactInfo(): ContactInfo {
+  try {
+    const stored = localStorage.getItem(CONTACT_INFO_KEY);
+    if (!stored) return DEFAULT_CONTACT;
+    return { ...DEFAULT_CONTACT, ...JSON.parse(stored) };
+  } catch {
+    return DEFAULT_CONTACT;
+  }
+}
+
+export function useGetContactInfo() {
+  return useQuery<ContactInfo>({
+    queryKey: ["contactInfo"],
+    queryFn: () => getStoredContactInfo(),
+    staleTime: 0,
+  });
+}
+
+export function useSetContactInfo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (info: ContactInfo) => {
+      localStorage.setItem(CONTACT_INFO_KEY, JSON.stringify(info));
+      return info;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contactInfo"] });
+    },
+  });
+}

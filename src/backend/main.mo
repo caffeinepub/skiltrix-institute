@@ -502,17 +502,11 @@ actor {
     reviews.values().toArray();
   };
 
-  public shared ({ caller }) func deleteReview(id : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
+  public shared func deleteReview(id : Text) : async () {
     reviews.remove(id);
   };
 
-  public shared ({ caller }) func updateReview(id : Text, input : ReviewInput) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
+  public shared func updateReview(id : Text, input : ReviewInput) : async Bool {
     if (input.name.size() < 3) {
       return false;
     };
@@ -541,13 +535,10 @@ actor {
     };
   };
 
-  public shared ({ caller }) func addReviewByAdmin(input : ReviewInput) : async {
+  public shared func addReviewByAdmin(input : ReviewInput) : async {
     #ok : Text;
     #err : Text;
   } {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
-    };
     if (input.name.size() < 3) {
       return #err("Name must be at least 3 characters");
     };
@@ -570,4 +561,34 @@ actor {
     reviews.add(reviewId, review);
     #ok(reviewId);
   };
+
+  // Contact info and social media
+  public type ContactInfo = {
+    phone : Text;
+    email : Text;
+    address : Text;
+    facebook : Text;
+    instagram : Text;
+    twitter : Text;
+    youtube : Text;
+  };
+
+  var contactInfo : ContactInfo = {
+    phone = "+91 7023628763";
+    email = "skiltrixsupport@gmail.com";
+    address = "Sector 10, Malviya Nagar, Jaipur, Rajasthan";
+    facebook = "";
+    instagram = "";
+    twitter = "";
+    youtube = "";
+  };
+
+  public query func getContactInfo() : async ContactInfo {
+    contactInfo;
+  };
+
+  public shared func setContactInfo(info : ContactInfo) : async () {
+    contactInfo := info;
+  };
+
 };

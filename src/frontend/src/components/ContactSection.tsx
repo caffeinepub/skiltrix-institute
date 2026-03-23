@@ -1,31 +1,74 @@
-import { Mail, MapPin, Phone } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+  Twitter,
+  Youtube,
+} from "lucide-react";
 import { motion } from "motion/react";
-
-const contactCards = [
-  {
-    icon: Phone,
-    title: "Phone",
-    value: "+91 7023628763",
-    href: "tel:+917023628763",
-    desc: "Call us anytime, Mon–Sat 9am–6pm",
-  },
-  {
-    icon: Mail,
-    title: "Email",
-    value: "skiltrixsupport@gmail.com",
-    href: "mailto:skiltrixsupport@gmail.com",
-    desc: "We reply within 24 hours",
-  },
-  {
-    icon: MapPin,
-    title: "Address",
-    value: "Sector 10, Malviya Nagar",
-    href: "https://maps.google.com/?q=Malviya+Nagar+Jaipur+Rajasthan",
-    desc: "Jaipur, Rajasthan 302017",
-  },
-];
+import { useGetContactInfo } from "../hooks/useQueries";
 
 export function ContactSection() {
+  const { data: info } = useGetContactInfo();
+
+  const phone = info?.phone || "+91 7023628763";
+  const email = info?.email || "skiltrixsupport@gmail.com";
+  const address =
+    info?.address || "Sector 10, Malviya Nagar, Jaipur, Rajasthan";
+
+  const contactCards = [
+    {
+      icon: Phone,
+      title: "Phone",
+      value: phone,
+      href: `tel:${phone.replace(/\s/g, "")}`,
+      desc: "Call us anytime, Mon–Sat 9am–6pm",
+    },
+    {
+      icon: Mail,
+      title: "Email",
+      value: email,
+      href: `mailto:${email}`,
+      desc: "We reply within 24 hours",
+    },
+    {
+      icon: MapPin,
+      title: "Address",
+      value: address,
+      href: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
+      desc: "Come visit us anytime",
+    },
+  ];
+
+  const socialLinks = [
+    {
+      icon: Facebook,
+      href: info?.facebook,
+      label: "Facebook",
+      color: "text-blue-600",
+    },
+    {
+      icon: Instagram,
+      href: info?.instagram,
+      label: "Instagram",
+      color: "text-pink-500",
+    },
+    {
+      icon: Twitter,
+      href: info?.twitter,
+      label: "Twitter",
+      color: "text-sky-500",
+    },
+    {
+      icon: Youtube,
+      href: info?.youtube,
+      label: "YouTube",
+      color: "text-red-500",
+    },
+  ].filter((s) => s.href && s.href.trim() !== "");
+
   return (
     <section
       id="contact"
@@ -80,6 +123,31 @@ export function ContactSection() {
             </motion.a>
           ))}
         </div>
+
+        {/* Social Media Links */}
+        {socialLinks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="flex items-center justify-center gap-4 mb-10"
+          >
+            <span className="text-sm text-muted-foreground">Follow us:</span>
+            {socialLinks.map(({ icon: Icon, href, label, color }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className={`w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 ${color}`}
+              >
+                <Icon className="w-5 h-5" />
+              </a>
+            ))}
+          </motion.div>
+        )}
 
         {/* Google Map */}
         <motion.div

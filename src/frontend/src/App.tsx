@@ -2,7 +2,6 @@ import { AboutSection } from "@/components/AboutSection";
 import { AdminPanel } from "@/components/AdminPanel";
 import { ApplyModal } from "@/components/ApplyModal";
 import { CTABand } from "@/components/CTABand";
-import { CareerGuidancePopup } from "@/components/CareerGuidancePopup";
 import { ContactSection } from "@/components/ContactSection";
 import { CoursesSection } from "@/components/CoursesSection";
 import { Footer } from "@/components/Footer";
@@ -175,7 +174,6 @@ function AppContent() {
         applicantEmail={reviewData.email}
         applicantCourse={reviewData.course}
       />
-      <CareerGuidancePopup />
       <Toaster />
       <WhatsAppButton />
     </>
