@@ -8,35 +8,9 @@ import type {
   ReviewInput,
   SubAdminInfo,
 } from "../backend.d";
+import type { ContactInfo } from "../backend.d";
+export type { ContactInfo };
 import { useActor } from "./useActor";
-
-// ─── localStorage helpers for features not yet in backend ───────────────────────────────
-const STAGES_KEY = "skiltrix_app_stages";
-const SUB_ADMINS_KEY = "skiltrix_sub_admins";
-
-function getStoredStages(): ApplicationStageInfo[] {
-  try {
-    return JSON.parse(localStorage.getItem(STAGES_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveStages(stages: ApplicationStageInfo[]) {
-  localStorage.setItem(STAGES_KEY, JSON.stringify(stages));
-}
-
-function getStoredSubAdmins(): SubAdminInfo[] {
-  try {
-    return JSON.parse(localStorage.getItem(SUB_ADMINS_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveSubAdmins(admins: SubAdminInfo[]) {
-  localStorage.setItem(SUB_ADMINS_KEY, JSON.stringify(admins));
-}
 
 // ─── Courses ────────────────────────────────────────────────────────────────────
 export function useGetCourses() {
@@ -168,29 +142,26 @@ export function useIssueCertificate() {
   });
 }
 
-// ─── Application Stages (localStorage-backed) ──────────────────────────────────
+// ─── Application Stages (backend-backed) ──────────────────────────────────
 export function useGetApplicationStages() {
+  const { actor, isFetching } = useActor();
   return useQuery<ApplicationStageInfo[]>({
     queryKey: ["applicationStages"],
-    queryFn: async () => getStoredStages(),
-    staleTime: 0,
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getApplicationStages();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 
 export function useUpdateApplicationStage() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: { applicationId: string; stage: string }) => {
-      const stages = getStoredStages();
-      const idx = stages.findIndex(
-        (s) => s.applicationId === data.applicationId,
-      );
-      if (idx >= 0) {
-        stages[idx].stage = data.stage;
-      } else {
-        stages.push({ applicationId: data.applicationId, stage: data.stage });
-      }
-      saveStages(stages);
+      if (!actor) throw new Error("Actor not available");
+      return actor.updateApplicationStage(data.applicationId, data.stage);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["applicationStages"] });
@@ -198,16 +169,21 @@ export function useUpdateApplicationStage() {
   });
 }
 
-// ─── Sub-admins (localStorage-backed) ─────────────────────────────────────────
+// ─── Sub-admins (backend-backed) ─────────────────────────────────────────
 export function useGetSubAdmins() {
+  const { actor, isFetching } = useActor();
   return useQuery<SubAdminInfo[]>({
     queryKey: ["subAdmins"],
-    queryFn: async () => getStoredSubAdmins(),
-    staleTime: 0,
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getSubAdmins();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 
 export function useCreateSubAdmin() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
@@ -216,12 +192,13 @@ export function useCreateSubAdmin() {
       password: string;
       mpin: string;
     }) => {
-      const admins = getStoredSubAdmins();
-      if (admins.find((a) => a.email === data.email)) {
-        throw new Error("Sub-admin with this email already exists");
-      }
-      admins.push({ email: data.email, name: data.name });
-      saveSubAdmins(admins);
+      if (!actor) throw new Error("Actor not available");
+      return actor.createSubAdmin(
+        data.email,
+        data.name,
+        data.password,
+        data.mpin,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subAdmins"] });
@@ -230,11 +207,12 @@ export function useCreateSubAdmin() {
 }
 
 export function useDeleteSubAdmin() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (email: string) => {
-      const admins = getStoredSubAdmins().filter((a) => a.email !== email);
-      saveSubAdmins(admins);
+      if (!actor) throw new Error("Actor not available");
+      return actor.deleteSubAdmin(email);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subAdmins"] });
@@ -491,53 +469,35 @@ export function useDeleteReview() {
   });
 }
 
-// ─── Contact Info (localStorage) ────────────────────────────────────────────
-
-const CONTACT_INFO_KEY = "skiltrix_contact_info";
-
-export interface ContactInfo {
-  phone: string;
-  email: string;
-  address: string;
-  facebook: string;
-  instagram: string;
-  twitter: string;
-  youtube: string;
-}
-
-const DEFAULT_CONTACT: ContactInfo = {
-  phone: "+91 7023628763",
-  email: "skiltrixsupport@gmail.com",
-  address: "Sector 10, Malviya Nagar, Jaipur, Rajasthan",
-  facebook: "",
-  instagram: "",
-  twitter: "",
-  youtube: "",
-};
-
-function getStoredContactInfo(): ContactInfo {
-  try {
-    const stored = localStorage.getItem(CONTACT_INFO_KEY);
-    if (!stored) return DEFAULT_CONTACT;
-    return { ...DEFAULT_CONTACT, ...JSON.parse(stored) };
-  } catch {
-    return DEFAULT_CONTACT;
-  }
-}
-
+// ─── Contact Info (backend-backed) ────────────────────────────────────────────
 export function useGetContactInfo() {
+  const { actor, isFetching } = useActor();
   return useQuery<ContactInfo>({
     queryKey: ["contactInfo"],
-    queryFn: () => getStoredContactInfo(),
-    staleTime: 0,
+    queryFn: async () => {
+      if (!actor)
+        return {
+          phone: "+91 7023628763",
+          email: "skiltrixsupport@gmail.com",
+          address: "Sector 10, Malviya Nagar, Jaipur, Rajasthan",
+          facebook: "",
+          instagram: "",
+          twitter: "",
+          youtube: "",
+        };
+      return actor.getContactInfo();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 
 export function useSetContactInfo() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (info: ContactInfo) => {
-      localStorage.setItem(CONTACT_INFO_KEY, JSON.stringify(info));
+      if (!actor) throw new Error("Actor not available");
+      await actor.setContactInfo(info);
       return info;
     },
     onSuccess: () => {

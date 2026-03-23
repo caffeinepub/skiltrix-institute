@@ -141,6 +141,15 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export interface ContactInfo {
+    phone: string;
+    email: string;
+    address: string;
+    facebook: string;
+    instagram: string;
+    twitter: string;
+    youtube: string;
+}
 export interface backendInterface {
     addCourse(course: Course): Promise<void>;
     addReviewByAdmin(input: ReviewInput): Promise<{
@@ -197,5 +206,7 @@ export interface backendInterface {
     updateCourse(course: Course): Promise<void>;
     updatePaymentStatus(applicationId: string, sessionId: string, isPaid: boolean): Promise<void>;
     updateReview(id: string, input: ReviewInput): Promise<boolean>;
+    getContactInfo(): Promise<ContactInfo>;
+    setContactInfo(info: ContactInfo): Promise<void>;
     verifyAdminCredentials(email: string, password: string, mpin: string): Promise<boolean>;
 }

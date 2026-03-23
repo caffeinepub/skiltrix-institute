@@ -223,6 +223,15 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export interface ContactInfo {
+    phone: string;
+    email: string;
+    address: string;
+    facebook: string;
+    instagram: string;
+    twitter: string;
+    youtube: string;
+}
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addCourse(course: Course): Promise<void>;
@@ -281,6 +290,8 @@ export interface backendInterface {
     updatePaymentStatus(applicationId: string, sessionId: string, isPaid: boolean): Promise<void>;
     updateReview(id: string, input: ReviewInput): Promise<boolean>;
     verifyAdminCredentials(email: string, password: string, mpin: string): Promise<boolean>;
+    getContactInfo(): Promise<ContactInfo>;
+    setContactInfo(info: ContactInfo): Promise<void>;
 }
 import type { Application as _Application, ApplicationId as _ApplicationId, ApplicationStatusInfo as _ApplicationStatusInfo, IdCardData as _IdCardData, PaymentStatus as _PaymentStatus, Status as _Status, StripeSessionStatus as _StripeSessionStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -925,6 +936,32 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.verifyAdminCredentials(arg0, arg1, arg2);
             return result;
+        }
+    }
+    async getContactInfo(): Promise<ContactInfo> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).getContactInfo();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await (this.actor as any).getContactInfo();
+            return result;
+        }
+    }
+    async setContactInfo(info: ContactInfo): Promise<void> {
+        if (this.processError) {
+            try {
+                await (this.actor as any).setContactInfo(info);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await (this.actor as any).setContactInfo(info);
         }
     }
 }
