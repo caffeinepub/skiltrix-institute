@@ -5,7 +5,7 @@ const QUICK_LINKS = [
   { label: "About Us", href: "#about" },
   { label: "Courses", href: "#courses" },
   { label: "Admissions", href: "#cta" },
-  { label: "Contact Us", href: "#footer" },
+  { label: "Contact", href: "#contact" },
 ];
 
 const PROGRAMS = [
@@ -104,29 +104,29 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex gap-2">
                 <span className="text-brand-blue mt-0.5">📍</span>
-                <span>123 Innovation Drive, Tech City, CA 94016, USA</span>
+                <span>Sector 10, Malviya Nagar, Jaipur, Rajasthan 302017</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-brand-blue mt-0.5">📞</span>
                 <a
-                  href="tel:+18005745489"
+                  href="tel:+917023628763"
                   className="hover:text-brand-blue transition-colors"
                 >
-                  +1 800 SKILTRIX
+                  +91 7023628763
                 </a>
               </li>
               <li className="flex gap-2">
                 <span className="text-brand-blue mt-0.5">✉️</span>
                 <a
-                  href="mailto:admissions@skiltrix.edu"
+                  href="mailto:skiltrixsupport@gmail.com"
                   className="hover:text-brand-blue transition-colors"
                 >
-                  admissions@skiltrix.edu
+                  skiltrixsupport@gmail.com
                 </a>
               </li>
               <li className="flex gap-2">
                 <span className="text-brand-blue mt-0.5">🕐</span>
-                <span>Mon–Fri: 9:00 AM – 6:00 PM</span>
+                <span>Mon–Sat: 9:00 AM – 6:00 PM</span>
               </li>
             </ul>
           </div>

@@ -95,6 +95,12 @@ actor {
     status : Status;
   };
 
+  // Analytics type
+  public type Analytics = {
+    visitors : Nat;
+    formSubmissions : Nat;
+  };
+
   // User Profile
   public type UserProfile = {
     name : Text;
@@ -112,6 +118,9 @@ actor {
   // Stripe configuration
   var stripeConfiguration : ?Stripe.StripeConfiguration = null;
 
+  // Visitor tracking
+  var visitorCount : Nat = 0;
+
   // Helper
   func requireAdmin(caller : Principal) {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
@@ -122,6 +131,19 @@ actor {
   func requireUser(caller : Principal) {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can perform this action");
+    };
+  };
+
+  // Visitor tracking
+  public func recordVisit() : async () {
+    visitorCount += 1;
+  };
+
+  public query ({ caller }) func getAnalytics() : async Analytics {
+    requireAdmin(caller);
+    {
+      visitors = visitorCount;
+      formSubmissions = applications.size();
     };
   };
 
@@ -209,7 +231,6 @@ actor {
 
   // Application management
   public shared ({ caller }) func submitApplication(application : Application) : async ApplicationId {
-    requireUser(caller);
     let id = application.applicationId;
     let newApplication : Application = {
       application with
@@ -239,8 +260,8 @@ actor {
         // Non-admins can only view applications they submitted
         switch (applicationOwnership.get(app.applicationId)) {
           case (null) {
-            // No ownership record - deny access
-            Runtime.trap("Unauthorized: Cannot access this application");
+            // No ownership record (anonymous submit) - allow by email match
+            maybeApp;
           };
           case (?owner) {
             if (owner == caller) {

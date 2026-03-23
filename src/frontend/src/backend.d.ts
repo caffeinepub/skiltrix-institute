@@ -23,6 +23,10 @@ export interface Application {
     certificateIssued: boolean;
     course: string;
 }
+export interface Analytics {
+    visitors: bigint;
+    formSubmissions: bigint;
+}
 export interface TransformationOutput {
     status: bigint;
     body: Uint8Array;
@@ -104,6 +108,7 @@ export interface backendInterface {
     deleteCourse(title: string): Promise<void>;
     getAllApplications(): Promise<Array<Application>>;
     getAllInquiries(): Promise<Array<Inquiry>>;
+    getAnalytics(): Promise<Analytics>;
     getApplicationByEmail(email: string): Promise<Application | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -114,6 +119,7 @@ export interface backendInterface {
     isCertificateIssued(applicationId: string): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
     issueCertificate(applicationId: string): Promise<void>;
+    recordVisit(): Promise<void>;
     rejectApplication(applicationId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;

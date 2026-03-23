@@ -21,8 +21,15 @@ import {
   useIsStripeConfigured,
   useSubmitApplication,
 } from "@/hooks/useQueries";
-import { CreditCard, Download, Loader2, Upload } from "lucide-react";
+import {
+  CheckCircle2,
+  CreditCard,
+  Download,
+  Loader2,
+  Upload,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { PaymentStatus, Status } from "../backend.d";
 
 const PROGRAMS = [
   "Web Development",
@@ -44,6 +51,14 @@ interface ReceiptData {
   course: string;
   applicationId: string;
   date: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+  course?: string;
+  address?: string;
 }
 
 function generateReceiptHTML(data: ReceiptData): string {
@@ -68,13 +83,13 @@ function generateReceiptHTML(data: ReceiptData): string {
     .receipt {
       background: #ffffff;
       border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(37, 99, 235, 0.15);
+      box-shadow: 0 8px 40px rgba(11, 94, 215, 0.15);
       max-width: 480px;
       width: 100%;
       overflow: hidden;
     }
     .receipt-header {
-      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      background: linear-gradient(135deg, #0B5ED7 0%, #1a6ee8 100%);
       padding: 2rem 2rem 1.5rem;
       text-align: center;
       color: white;
@@ -86,10 +101,14 @@ function generateReceiptHTML(data: ReceiptData): string {
     .field { margin-bottom: 1.25rem; }
     .field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; margin-bottom: 0.25rem; }
     .field-value { font-size: 1rem; font-weight: 600; color: #111827; }
+    .app-id { font-family: monospace; background: #eff6ff; padding: 4px 8px; border-radius: 6px; color: #0B5ED7; font-size: 1.05rem; }
     .divider { border: none; border-top: 1px dashed #e5e7eb; margin: 1.5rem 0; }
-    .notice { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 700; color: #1d4ed8; text-align: center; line-height: 1.5; }
+    .notice { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 700; color: #0B5ED7; text-align: center; line-height: 1.5; }
     .receipt-footer { text-align: center; padding: 1.25rem 2rem; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #f3f4f6; }
-    @media print { body { background: white; padding: 0; } .receipt { box-shadow: none; max-width: 100%; border-radius: 0; } }
+    @media print {
+      body { background: white; padding: 0; }
+      .receipt { box-shadow: none; max-width: 100%; border-radius: 0; }
+    }
   </style>
 </head>
 <body>
@@ -101,7 +120,7 @@ function generateReceiptHTML(data: ReceiptData): string {
     <div class="receipt-body">
       <div class="field"><div class="field-label">Student Name</div><div class="field-value">${data.name}</div></div>
       <div class="field"><div class="field-label">Course / Program</div><div class="field-value">${data.course}</div></div>
-      <div class="field"><div class="field-label">Application ID</div><div class="field-value">${data.applicationId}</div></div>
+      <div class="field"><div class="field-label">Application ID</div><div class="field-value"><span class="app-id">${data.applicationId}</span></div></div>
       <div class="field"><div class="field-label">Date of Application</div><div class="field-value">${data.date}</div></div>
       <hr class="divider" />
       <div class="notice">Bring this receipt to office for admission confirmation</div>
@@ -124,6 +143,7 @@ export function ApplyModal({
     course: preSelectedCourse ?? "",
     address: "",
   });
+  const [errors, setErrors] = useState<FormErrors>({});
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -132,7 +152,6 @@ export function ApplyModal({
   const createSession = useCreateCheckoutSession();
   const { data: stripeConfigured } = useIsStripeConfigured();
 
-  // When modal opens with a pre-selected course, apply it
   useEffect(() => {
     if (open && preSelectedCourse) {
       setForm((prev) => ({ ...prev, course: preSelectedCourse }));
@@ -143,6 +162,9 @@ export function ApplyModal({
     (field: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+      }
     };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,8 +174,28 @@ export function ApplyModal({
     setPhotoPreview(file ? URL.createObjectURL(file) : null);
   };
 
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+    if (!form.name.trim()) newErrors.name = "Full name is required";
+    if (!form.email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!/^[^@]+@[^@]+\.[^@]+$/.test(form.email)) {
+      newErrors.email = "Enter a valid email address";
+    }
+    if (!form.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (form.phone.replace(/\D/g, "").length < 7) {
+      newErrors.phone = "Enter a valid phone number (min 7 digits)";
+    }
+    if (!form.course) newErrors.course = "Please select a course";
+    if (!form.address.trim()) newErrors.address = "Address is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     const applicationId = `SKX-${Date.now()}`;
     const date = new Date().toLocaleDateString("en-US", {
       year: "numeric",
@@ -161,25 +203,33 @@ export function ApplyModal({
       day: "numeric",
     });
     try {
-      await mutation.mutateAsync({ ...form, applicationId, date });
+      await mutation.mutateAsync({
+        ...form,
+        applicationId,
+        date,
+        status: Status.pending,
+        paymentStatus: PaymentStatus.unpaid,
+        certificateIssued: false,
+      });
       setReceipt({ name: form.name, course: form.course, applicationId, date });
     } catch {
       // error shown via mutation.isError
     }
   };
 
-  const handleDownload = () => {
+  const handleDownloadPDF = () => {
     if (!receipt) return;
     const html = generateReceiptHTML(receipt);
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `SKILTRIX-Receipt-${receipt.applicationId}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
   };
 
   const handlePayNow = () => {
@@ -200,6 +250,7 @@ export function ApplyModal({
   const handleClose = (val: boolean) => {
     if (!val) {
       setReceipt(null);
+      setErrors({});
       setForm({ name: "", email: "", phone: "", course: "", address: "" });
       setPhotoFile(null);
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -216,11 +267,13 @@ export function ApplyModal({
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-extrabold text-foreground">
-            {receipt ? "Application Received!" : "Apply to SKILTRIX"}
+            {receipt
+              ? "Application Submitted Successfully!"
+              : "Apply to SKILTRIX"}
           </DialogTitle>
           <DialogDescription>
             {receipt
-              ? "Your application has been submitted successfully."
+              ? `Your application ID is ${receipt.applicationId}. Save it for tracking.`
               : "Fill out the form below and our admissions team will contact you shortly."}
           </DialogDescription>
         </DialogHeader>
@@ -230,8 +283,33 @@ export function ApplyModal({
             data-ocid="apply.success_state"
             className="flex flex-col gap-4 mt-2"
           >
-            <div className="rounded-xl border border-border overflow-hidden shadow-sm">
-              <div className="bg-brand-blue px-6 py-4 text-center text-white">
+            {/* Success indicator */}
+            <div className="flex flex-col items-center gap-2 py-2">
+              <CheckCircle2
+                className="text-emerald-500"
+                style={{ width: 56, height: 56 }}
+              />
+              <p className="text-lg font-bold text-foreground">
+                Application Submitted Successfully!
+              </p>
+              <p className="text-sm text-muted-foreground text-center">
+                Your application ID is{" "}
+                <span className="font-mono font-semibold text-brand-blue bg-blue-50 px-2 py-0.5 rounded">
+                  {receipt.applicationId}
+                </span>
+                . Save it for tracking.
+              </p>
+            </div>
+
+            {/* Receipt card */}
+            <div className="rounded-2xl border border-border overflow-hidden shadow-md">
+              <div
+                className="px-6 py-4 text-center text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #0B5ED7 0%, #1a6ee8 100%)",
+                }}
+              >
                 <div className="text-xl font-extrabold tracking-widest">
                   SKIL<span className="opacity-70">TRIX</span>
                 </div>
@@ -239,9 +317,9 @@ export function ApplyModal({
                   Admission Receipt
                 </div>
               </div>
-              <div className="bg-card px-6 py-5 space-y-3">
+              <div className="bg-card px-6 py-5 space-y-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                     Student Name
                   </p>
                   <p className="font-semibold text-foreground">
@@ -249,7 +327,7 @@ export function ApplyModal({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                     Course / Program
                   </p>
                   <p className="font-semibold text-foreground">
@@ -257,23 +335,23 @@ export function ApplyModal({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                     Application ID
                   </p>
-                  <p className="font-semibold text-foreground font-mono">
+                  <p className="font-semibold font-mono text-brand-blue bg-blue-50 inline-block px-2 py-0.5 rounded text-sm">
                     {receipt.applicationId}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                     Date of Application
                   </p>
                   <p className="font-semibold text-foreground">
                     {receipt.date}
                   </p>
                 </div>
-                <div className="pt-2">
-                  <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-center text-sm font-bold text-brand-blue leading-snug">
+                <div className="pt-1">
+                  <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-center text-sm font-bold text-brand-blue leading-snug">
                     Bring this receipt to office for admission confirmation
                   </div>
                 </div>
@@ -290,11 +368,12 @@ export function ApplyModal({
                 Close
               </Button>
               <Button
-                onClick={handleDownload}
+                onClick={handleDownloadPDF}
                 data-ocid="apply.primary_button"
-                className="flex-1 bg-brand-blue hover:bg-[oklch(0.52_0.19_252)] text-white rounded-full font-semibold"
+                className="flex-1 text-white rounded-full font-semibold"
+                style={{ backgroundColor: "#0B5ED7" }}
               >
-                <Download className="mr-2 h-4 w-4" /> Download Receipt
+                <Download className="mr-2 h-4 w-4" /> Download as PDF
               </Button>
             </div>
 
@@ -324,8 +403,16 @@ export function ApplyModal({
                 placeholder="Jane Doe"
                 value={form.name}
                 onChange={handleChange("name")}
-                required
+                className={errors.name ? "border-destructive" : ""}
               />
+              {errors.name && (
+                <p
+                  className="text-destructive text-xs"
+                  data-ocid="apply.error_state"
+                >
+                  {errors.name}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Email Address *</Label>
@@ -336,8 +423,16 @@ export function ApplyModal({
                 placeholder="jane@example.com"
                 value={form.email}
                 onChange={handleChange("email")}
-                required
+                className={errors.email ? "border-destructive" : ""}
               />
+              {errors.email && (
+                <p
+                  className="text-destructive text-xs"
+                  data-ocid="apply.error_state"
+                >
+                  {errors.email}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">Phone Number *</Label>
@@ -345,22 +440,34 @@ export function ApplyModal({
                 id="phone"
                 type="tel"
                 data-ocid="apply.input"
-                placeholder="+1 (555) 000-0000"
+                placeholder="+91 9999999999"
                 value={form.phone}
                 onChange={handleChange("phone")}
-                required
+                className={errors.phone ? "border-destructive" : ""}
               />
+              {errors.phone && (
+                <p
+                  className="text-destructive text-xs"
+                  data-ocid="apply.error_state"
+                >
+                  {errors.phone}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Course Selection *</Label>
               <Select
                 value={form.course}
-                onValueChange={(v) =>
-                  setForm((prev) => ({ ...prev, course: v }))
-                }
-                required
+                onValueChange={(v) => {
+                  setForm((prev) => ({ ...prev, course: v }));
+                  if (errors.course)
+                    setErrors((prev) => ({ ...prev, course: undefined }));
+                }}
               >
-                <SelectTrigger data-ocid="apply.select">
+                <SelectTrigger
+                  data-ocid="apply.select"
+                  className={errors.course ? "border-destructive" : ""}
+                >
                   <SelectValue placeholder="Select a program" />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,6 +478,14 @@ export function ApplyModal({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.course && (
+                <p
+                  className="text-destructive text-xs"
+                  data-ocid="apply.error_state"
+                >
+                  {errors.course}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="address">Address *</Label>
@@ -381,8 +496,16 @@ export function ApplyModal({
                 value={form.address}
                 onChange={handleChange("address")}
                 rows={2}
-                required
+                className={errors.address ? "border-destructive" : ""}
               />
+              {errors.address && (
+                <p
+                  className="text-destructive text-xs"
+                  data-ocid="apply.error_state"
+                >
+                  {errors.address}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Photo (optional)</Label>
@@ -422,7 +545,9 @@ export function ApplyModal({
                 data-ocid="apply.error_state"
                 className="text-destructive text-sm"
               >
-                Something went wrong. Please try again.
+                {mutation.error instanceof Error
+                  ? mutation.error.message
+                  : "Something went wrong. Please try again."}
               </p>
             )}
             <div className="flex gap-3 pt-2">
@@ -439,7 +564,8 @@ export function ApplyModal({
                 type="submit"
                 disabled={mutation.isPending}
                 data-ocid="apply.submit_button"
-                className="flex-1 bg-brand-blue hover:bg-[oklch(0.52_0.19_252)] text-white rounded-full font-semibold"
+                className="flex-1 text-white rounded-full font-semibold"
+                style={{ backgroundColor: "#0B5ED7" }}
               >
                 {mutation.isPending ? (
                   <>

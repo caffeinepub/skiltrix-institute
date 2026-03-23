@@ -2,6 +2,8 @@ import { AboutSection } from "@/components/AboutSection";
 import { AdminPanel } from "@/components/AdminPanel";
 import { ApplyModal } from "@/components/ApplyModal";
 import { CTABand } from "@/components/CTABand";
+import { CareerGuidancePopup } from "@/components/CareerGuidancePopup";
+import { ContactSection } from "@/components/ContactSection";
 import { CoursesSection } from "@/components/CoursesSection";
 import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/HeroSection";
@@ -10,8 +12,9 @@ import { StudentDashboard } from "@/components/StudentDashboard";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { TrackApplication } from "@/components/TrackApplication";
 import { Toaster } from "@/components/ui/sonner";
+import { useRecordVisit } from "@/hooks/useQueries";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const queryClient = new QueryClient();
 
@@ -35,11 +38,9 @@ function WhatsAppButton() {
       aria-label="Chat with us on WhatsApp"
       className="group fixed bottom-6 right-6 z-50 flex items-center gap-2"
     >
-      {/* Tooltip */}
       <span className="pointer-events-none translate-x-2 rounded-full bg-gray-800 px-3 py-1 text-sm font-medium text-white opacity-0 shadow-lg transition-all duration-200 group-hover:-translate-x-0 group-hover:opacity-100">
         Chat with us
       </span>
-      {/* Button */}
       <span
         className="flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform duration-200 group-hover:scale-110"
         style={{ backgroundColor: "#25D366" }}
@@ -56,6 +57,37 @@ function WhatsAppButton() {
         </svg>
       </span>
     </a>
+  );
+}
+
+function PublicView({
+  onApplyClick,
+}: {
+  onApplyClick: (course?: string) => void;
+}) {
+  const { mutate: mutateVisit } = useRecordVisit();
+  const recorded = useRef(false);
+
+  useEffect(() => {
+    if (!recorded.current) {
+      recorded.current = true;
+      mutateVisit();
+    }
+  }, [mutateVisit]);
+
+  return (
+    <div className="min-h-screen font-sans">
+      <Navbar onApplyClick={() => onApplyClick()} />
+      <main>
+        <HeroSection onApplyClick={() => onApplyClick()} />
+        <AboutSection />
+        <CoursesSection onApplyClick={onApplyClick} />
+        <TestimonialsSection />
+        <CTABand onApplyClick={() => onApplyClick()} />
+        <ContactSection />
+      </main>
+      <Footer />
+    </div>
   );
 }
 
@@ -103,16 +135,8 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen font-sans">
-      <Navbar onApplyClick={() => handleApplyClick()} />
-      <main>
-        <HeroSection onApplyClick={() => handleApplyClick()} />
-        <AboutSection />
-        <CoursesSection onApplyClick={handleApplyClick} />
-        <TestimonialsSection />
-        <CTABand onApplyClick={() => handleApplyClick()} />
-      </main>
-      <Footer />
+    <>
+      <PublicView onApplyClick={handleApplyClick} />
       <ApplyModal
         open={applyOpen}
         onOpenChange={(val) => {
@@ -121,9 +145,10 @@ function AppContent() {
         }}
         preSelectedCourse={applyCourse}
       />
+      <CareerGuidancePopup />
       <Toaster />
       <WhatsAppButton />
-    </div>
+    </>
   );
 }
 

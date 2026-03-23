@@ -205,6 +205,8 @@ export interface backendInterface {
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateCourse(course: Course): Promise<void>;
     updatePaymentStatus(applicationId: string, sessionId: string, isPaid: boolean): Promise<void>;
+    recordVisit(): Promise<void>;
+    getAnalytics(): Promise<{ visitors: bigint; formSubmissions: bigint }>;
 }
 import type { Application as _Application, ApplicationId as _ApplicationId, PaymentStatus as _PaymentStatus, Status as _Status, StripeSessionStatus as _StripeSessionStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -585,6 +587,30 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.updatePaymentStatus(arg0, arg1, arg2);
             return result;
+        }
+    }
+    async recordVisit(): Promise<void> {
+        if (this.processError) {
+            try {
+                return await (this.actor as any).recordVisit();
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            return await (this.actor as any).recordVisit();
+        }
+    }
+    async getAnalytics(): Promise<{ visitors: bigint; formSubmissions: bigint }> {
+        if (this.processError) {
+            try {
+                return await (this.actor as any).getAnalytics();
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            return await (this.actor as any).getAnalytics();
         }
     }
 }

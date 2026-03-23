@@ -14,6 +14,7 @@ import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
   useApproveApplication,
   useGetAllApplications,
+  useGetAnalytics,
   useIsCallerAdmin,
   useIssueCertificate,
   useRejectApplication,
@@ -21,23 +22,27 @@ import {
 import {
   ArrowLeft,
   Award,
+  BarChart3,
   CheckCircle2,
   Clock,
-  CreditCard,
+  Eye,
+  FileText,
   Loader2,
   Lock,
   ShieldCheck,
+  TrendingUp,
   Users,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { Application } from "../backend.d";
-import { PaymentStatus, Status } from "../backend.d";
+import { Status } from "../backend.d";
 
 type FilterTab = "all" | Status;
 
 const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5"];
+const BRAND_BLUE = "#0B5ED7";
 
 function StatusBadge({ status }: { status: Status }) {
   if (status === Status.approved) {
@@ -61,35 +66,21 @@ function StatusBadge({ status }: { status: Status }) {
   );
 }
 
-function PaymentBadge({ status }: { status: PaymentStatus }) {
-  if (status === PaymentStatus.paid) {
-    return (
-      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
-        <CheckCircle2 className="h-3 w-3 mr-1" /> Paid
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-100">
-      <CreditCard className="h-3 w-3 mr-1" /> Unpaid
-    </Badge>
-  );
-}
-
 function StatCard({
   label,
   value,
   icon,
-  color,
+  accentColor,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
-  color: string;
+  accentColor: string;
 }) {
   return (
     <div
-      className={`rounded-xl border bg-white p-5 flex items-center gap-4 shadow-sm ${color}`}
+      className="rounded-2xl bg-white p-5 flex items-center gap-4 shadow-sm border border-border"
+      style={{ borderLeft: `4px solid ${accentColor}` }}
     >
       <div className="text-3xl font-extrabold text-foreground">{value}</div>
       <div>
@@ -102,35 +93,57 @@ function StatCard({
   );
 }
 
+function AnalyticsCard({
+  label,
+  value,
+  icon,
+  accentColor,
+  subtitle,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accentColor: string;
+  subtitle?: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl bg-white p-5 shadow-sm border border-border flex flex-col gap-2"
+      style={{ borderTop: `4px solid ${accentColor}` }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+        <span className="opacity-60">{icon}</span>
+      </div>
+      <div className="text-4xl font-extrabold text-foreground leading-none">
+        {value}
+      </div>
+      {subtitle && (
+        <div className="text-xs text-muted-foreground">{subtitle}</div>
+      )}
+    </div>
+  );
+}
+
 function ApplicationRow({ app, index }: { app: Application; index: number }) {
   const approve = useApproveApplication();
   const reject = useRejectApplication();
   const issueCert = useIssueCertificate();
   const isActing = approve.isPending || reject.isPending || issueCert.isPending;
 
-  const canIssueCert =
-    app.status === Status.approved &&
-    app.paymentStatus === PaymentStatus.paid &&
-    !app.certificateIssued;
+  const canIssueCert = app.status === Status.approved && !app.certificateIssued;
 
   return (
     <TableRow data-ocid={`admin.item.${index}`}>
-      <TableCell className="font-medium">{app.name}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {app.email}
-      </TableCell>
+      <TableCell className="font-semibold">{app.name}</TableCell>
+      <TableCell className="text-sm">{app.course}</TableCell>
       <TableCell className="text-muted-foreground text-sm">
         {app.phone}
       </TableCell>
-      <TableCell className="text-sm">{app.course}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {app.date}
-      </TableCell>
       <TableCell>
         <StatusBadge status={app.status} />
-      </TableCell>
-      <TableCell>
-        <PaymentBadge status={app.paymentStatus} />
       </TableCell>
       <TableCell>
         <div className="flex gap-2 flex-wrap">
@@ -139,7 +152,8 @@ function ApplicationRow({ app, index }: { app: Application; index: number }) {
             disabled={app.status === Status.approved || isActing}
             onClick={() => approve.mutate(app.applicationId)}
             data-ocid={`admin.confirm_button.${index}`}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-3 text-xs rounded-full disabled:opacity-40"
+            className="text-white h-7 px-3 text-xs rounded-full disabled:opacity-40"
+            style={{ backgroundColor: BRAND_BLUE }}
           >
             {approve.isPending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -192,6 +206,12 @@ function ApplicationRow({ app, index }: { app: Application; index: number }) {
 function AdminContent() {
   const [filter, setFilter] = useState<FilterTab>("all");
   const { data: applications = [], isLoading } = useGetAllApplications();
+  const { data: analytics } = useGetAnalytics();
+
+  const visitors = analytics ? Number(analytics.visitors) : 0;
+  const formSubmissions = analytics ? Number(analytics.formSubmissions) : 0;
+  const conversionRate =
+    visitors > 0 ? ((formSubmissions / visitors) * 100).toFixed(1) : "0.0";
 
   const filtered =
     filter === "all"
@@ -209,11 +229,14 @@ function AdminContent() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[oklch(0.97_0.01_252)] font-sans">
+    <div className="min-h-screen bg-[oklch(0.97_0.01_257)] font-sans">
       <header className="bg-white border-b border-border sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-brand-blue flex items-center justify-center">
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: BRAND_BLUE }}
+            >
               <ShieldCheck className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -239,39 +262,85 @@ function AdminContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Analytics Section */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
         >
-          <StatCard
-            label="Total"
-            value={total}
-            icon={<Users className="h-4 w-4" />}
-            color="border-border"
-          />
-          <StatCard
-            label="Pending"
-            value={pending}
-            icon={<Clock className="h-4 w-4 text-amber-500" />}
-            color="border-amber-200"
-          />
-          <StatCard
-            label="Approved"
-            value={approved}
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-            color="border-emerald-200"
-          />
-          <StatCard
-            label="Rejected"
-            value={rejected}
-            icon={<XCircle className="h-4 w-4 text-red-500" />}
-            color="border-red-200"
-          />
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-5 w-5" style={{ color: BRAND_BLUE }} />
+            <h2 className="text-base font-bold text-foreground">
+              Website Analytics
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <AnalyticsCard
+              label="Visitors"
+              value={visitors.toLocaleString()}
+              icon={<Eye className="h-5 w-5" style={{ color: BRAND_BLUE }} />}
+              accentColor={BRAND_BLUE}
+              subtitle="Total public page visits"
+            />
+            <AnalyticsCard
+              label="Form Submissions"
+              value={formSubmissions.toLocaleString()}
+              icon={<FileText className="h-5 w-5 text-indigo-500" />}
+              accentColor="#6366f1"
+              subtitle="Total applications submitted"
+            />
+            <AnalyticsCard
+              label="Conversion Rate"
+              value={`${conversionRate}%`}
+              icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
+              accentColor="#10b981"
+              subtitle="Submissions per visitor"
+            />
+          </div>
         </motion.div>
 
+        {/* Application Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5" style={{ color: BRAND_BLUE }} />
+            <h2 className="text-base font-bold text-foreground">
+              Application Stats
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              label="Total"
+              value={total}
+              icon={<Users className="h-4 w-4" style={{ color: BRAND_BLUE }} />}
+              accentColor={BRAND_BLUE}
+            />
+            <StatCard
+              label="Pending"
+              value={pending}
+              icon={<Clock className="h-4 w-4 text-amber-500" />}
+              accentColor="#f59e0b"
+            />
+            <StatCard
+              label="Approved"
+              value={approved}
+              icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+              accentColor="#10b981"
+            />
+            <StatCard
+              label="Rejected"
+              value={rejected}
+              icon={<XCircle className="h-4 w-4 text-red-500" />}
+              accentColor="#ef4444"
+            />
+          </div>
+        </motion.div>
+
+        {/* Applications Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -338,12 +407,9 @@ function AdminContent() {
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead className="font-semibold">Name</TableHead>
-                    <TableHead className="font-semibold">Email</TableHead>
-                    <TableHead className="font-semibold">Phone</TableHead>
                     <TableHead className="font-semibold">Course</TableHead>
-                    <TableHead className="font-semibold">Date</TableHead>
+                    <TableHead className="font-semibold">Phone</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Payment</TableHead>
                     <TableHead className="font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -373,14 +439,17 @@ export function AdminPanel() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[oklch(0.97_0.01_252)] flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-[oklch(0.97_0.01_257)] flex items-center justify-center font-sans">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-2xl border border-border shadow-lg p-10 max-w-sm w-full text-center"
         >
-          <div className="w-14 h-14 rounded-2xl bg-brand-blue/10 flex items-center justify-center mx-auto mb-5">
-            <Lock className="h-7 w-7 text-brand-blue" />
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{ backgroundColor: "rgba(11,94,215,0.1)" }}
+          >
+            <Lock className="h-7 w-7" style={{ color: BRAND_BLUE }} />
           </div>
           <h2 className="text-2xl font-extrabold text-foreground mb-2">
             Admin Access
@@ -393,7 +462,8 @@ export function AdminPanel() {
             onClick={login}
             disabled={isLoggingIn}
             data-ocid="admin.primary_button"
-            className="w-full bg-brand-blue hover:bg-[oklch(0.52_0.19_252)] text-white rounded-full font-semibold h-11"
+            className="w-full text-white rounded-full font-semibold h-11"
+            style={{ backgroundColor: BRAND_BLUE }}
           >
             {isLoggingIn ? (
               <>
@@ -423,16 +493,19 @@ export function AdminPanel() {
     return (
       <div
         data-ocid="admin.loading_state"
-        className="min-h-screen flex items-center justify-center bg-[oklch(0.97_0.01_252)]"
+        className="min-h-screen flex items-center justify-center bg-[oklch(0.97_0.01_257)]"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <Loader2
+          className="h-8 w-8 animate-spin"
+          style={{ color: BRAND_BLUE }}
+        />
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[oklch(0.97_0.01_252)] flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-[oklch(0.97_0.01_257)] flex items-center justify-center font-sans">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

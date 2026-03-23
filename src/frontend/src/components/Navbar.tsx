@@ -12,7 +12,7 @@ const navLinks = [
   { label: "About Us", href: "#about" },
   { label: "Courses", href: "#courses" },
   { label: "Admissions", href: "#cta" },
-  { label: "Contact Us", href: "#footer" },
+  { label: "Contact", href: "#contact" },
 ];
 
 export function Navbar({ onApplyClick }: NavbarProps) {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Application, Course } from "../backend.d";
+import type { Analytics, Application, Course } from "../backend.d";
 import { useActor } from "./useActor";
 
 export function useGetCourses() {
@@ -37,17 +37,9 @@ export function useSubmitInquiry() {
 export function useSubmitApplication() {
   const { actor } = useActor();
   return useMutation({
-    mutationFn: async (data: {
-      applicationId: string;
-      name: string;
-      email: string;
-      phone: string;
-      course: string;
-      address: string;
-      date: string;
-    }) => {
+    mutationFn: async (data: Application) => {
       if (!actor) throw new Error("Actor not available");
-      return actor.submitApplication(data as any);
+      return actor.submitApplication(data);
     },
   });
 }
@@ -178,5 +170,27 @@ export function useGetStripeSessionStatus() {
       if (!actor) throw new Error("Actor not available");
       return actor.getStripeSessionStatus(sessionId);
     },
+  });
+}
+
+export function useRecordVisit() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.recordVisit();
+    },
+  });
+}
+
+export function useGetAnalytics() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Analytics>({
+    queryKey: ["analytics"],
+    queryFn: async () => {
+      if (!actor) return { visitors: BigInt(0), formSubmissions: BigInt(0) };
+      return actor.getAnalytics();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
