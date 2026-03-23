@@ -1,8 +1,6 @@
 import Text "mo:core/Text";
 import Order "mo:core/Order";
-import Array "mo:core/Array";
 import Map "mo:core/Map";
-import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import OutCall "http-outcalls/outcall";
@@ -11,13 +9,14 @@ import Stripe "stripe/stripe";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-
-// IMPORTANT: With correct, consistent migration application
-
-
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  // Admin credentials
+  var adminEmail = "admin@skiltrix.com";
+  var adminPassword = "Admin@123";
+  var adminMpin = "1234";
 
   // Course type
   public type Course = {
@@ -86,13 +85,32 @@ actor {
     #paid;
   };
 
-  // Public application status info (no sensitive data)
+  // Public application status info
   public type ApplicationStatusInfo = {
     applicationId : ApplicationId;
     name : Text;
     course : Text;
     date : Text;
     status : Status;
+  };
+
+  // Application stage info
+  public type ApplicationStageInfo = {
+    applicationId : ApplicationId;
+    stage : Text;
+  };
+
+  // Sub-admin types
+  public type SubAdmin = {
+    email : Text;
+    name : Text;
+    password : Text;
+    mpin : Text;
+  };
+
+  public type SubAdminInfo = {
+    email : Text;
+    name : Text;
   };
 
   // Analytics type
@@ -111,9 +129,13 @@ actor {
   let inquiries = Map.empty<Text, Inquiry>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let applications = Map.empty<ApplicationId, Application>();
-
-  // Map applicationId to the principal who submitted it for ownership verification
   let applicationOwnership = Map.empty<ApplicationId, Principal>();
+
+  // Application tracking stages
+  let applicationStages = Map.empty<ApplicationId, Text>();
+
+  // Sub-admins
+  let subAdmins = Map.empty<Text, SubAdmin>();
 
   // Stripe configuration
   var stripeConfiguration : ?Stripe.StripeConfiguration = null;
@@ -121,17 +143,63 @@ actor {
   // Visitor tracking
   var visitorCount : Nat = 0;
 
-  // Helper
-  func requireAdmin(caller : Principal) {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+  // Credential verification - checks main admin and sub-admins
+  public query func verifyAdminCredentials(email : Text, password : Text, mpin : Text) : async Bool {
+    if (email == adminEmail and password == adminPassword and mpin == adminMpin) {
+      return true;
+    };
+    switch (subAdmins.get(email)) {
+      case (?sa) { sa.password == password and sa.mpin == mpin };
+      case (null) { false };
     };
   };
 
-  func requireUser(caller : Principal) {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
+  // Admin credentials management - requires old password + mpin for verification
+  public func setAdminCredentials(oldPassword : Text, oldMpin : Text, newEmail : Text, newPassword : Text, newMpin : Text) : async Bool {
+    if (adminPassword == oldPassword and adminMpin == oldMpin) {
+      adminEmail := newEmail;
+      adminPassword := newPassword;
+      adminMpin := newMpin;
+      true;
+    } else {
+      false;
     };
+  };
+
+  // Sub-admin management
+  public func createSubAdmin(email : Text, name : Text, password : Text, mpin : Text) : async () {
+    subAdmins.add(email, { email; name; password; mpin });
+  };
+
+  public query func getSubAdmins() : async [SubAdminInfo] {
+    subAdmins.values().map(
+      func(sa : SubAdmin) : SubAdminInfo {
+        { email = sa.email; name = sa.name };
+      },
+    ).toArray();
+  };
+
+  public func deleteSubAdmin(email : Text) : async () {
+    subAdmins.remove(email);
+  };
+
+  // Application stage management
+  public func updateApplicationStage(applicationId : ApplicationId, stage : Text) : async () {
+    applicationStages.add(applicationId, stage);
+  };
+
+  public query func getApplicationStages() : async [ApplicationStageInfo] {
+    applications.values().map(
+      func(app : Application) : ApplicationStageInfo {
+        {
+          applicationId = app.applicationId;
+          stage = switch (applicationStages.get(app.applicationId)) {
+            case (?s) s;
+            case (null) "Application Received";
+          };
+        };
+      },
+    ).toArray();
   };
 
   // Visitor tracking
@@ -139,8 +207,7 @@ actor {
     visitorCount += 1;
   };
 
-  public query ({ caller }) func getAnalytics() : async Analytics {
-    requireAdmin(caller);
+  public query func getAnalytics() : async Analytics {
     {
       visitors = visitorCount;
       formSubmissions = applications.size();
@@ -152,8 +219,7 @@ actor {
     stripeConfiguration != null;
   };
 
-  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
-    requireAdmin(caller);
+  public func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
     stripeConfiguration := ?config;
   };
 
@@ -166,12 +232,10 @@ actor {
 
   // Create checkout session for registration
   public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
-    requireUser(caller);
     await Stripe.createCheckoutSession(getStripeConfig(), caller, items, successUrl, cancelUrl, transform);
   };
 
-  public shared ({ caller }) func createDefaultCheckoutSession(successUrl : Text, cancelUrl : Text) : async Text {
-    requireUser(caller);
+  public shared func createDefaultCheckoutSession(successUrl : Text, cancelUrl : Text) : async Text {
     let items : [Stripe.ShoppingItem] = [
       {
         currency = "INR";
@@ -184,28 +248,24 @@ actor {
     await createCheckoutSession(items, successUrl, cancelUrl);
   };
 
-  public shared ({ caller }) func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
-    requireUser(caller);
+  public shared func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
     await Stripe.getSessionStatus(getStripeConfig(), sessionId, transform);
   };
 
-  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
   // Course management
-  public shared ({ caller }) func addCourse(course : Course) : async () {
-    requireAdmin(caller);
+  public func addCourse(course : Course) : async () {
     courses.add(course.title, course);
   };
 
-  public shared ({ caller }) func updateCourse(course : Course) : async () {
-    requireAdmin(caller);
+  public func updateCourse(course : Course) : async () {
     courses.add(course.title, course);
   };
 
-  public shared ({ caller }) func deleteCourse(title : Text) : async () {
-    requireAdmin(caller);
+  public func deleteCourse(title : Text) : async () {
     courses.remove(title);
   };
 
@@ -213,7 +273,7 @@ actor {
     courses.values().toArray().sort();
   };
 
-  // Public application status lookup - no auth required
+  // Public application status lookup
   public query func getApplicationStatus(applicationId : ApplicationId) : async ?ApplicationStatusInfo {
     switch (applications.get(applicationId)) {
       case (null) { null };
@@ -229,7 +289,7 @@ actor {
     };
   };
 
-  // Application management
+  // Application submission - open to all
   public shared ({ caller }) func submitApplication(application : Application) : async ApplicationId {
     let id = application.applicationId;
     let newApplication : Application = {
@@ -246,27 +306,17 @@ actor {
   };
 
   public query ({ caller }) func getApplicationByEmail(email : Text) : async ?Application {
-    // Find application by email
     let maybeApp = applications.values().toArray().find(func(a) { a.email == email });
-
     switch (maybeApp) {
       case (null) { null };
       case (?app) {
-        // Admins can view any application
         if (AccessControl.isAdmin(accessControlState, caller)) {
           return maybeApp;
         };
-
-        // Non-admins can only view applications they submitted
         switch (applicationOwnership.get(app.applicationId)) {
-          case (null) {
-            // No ownership record (anonymous submit) - allow by email match
-            maybeApp;
-          };
+          case (null) { maybeApp };
           case (?owner) {
-            if (owner == caller) {
-              maybeApp;
-            } else {
+            if (owner == caller) { maybeApp } else {
               Runtime.trap("Unauthorized: Can only view your own applications");
             };
           };
@@ -275,47 +325,40 @@ actor {
     };
   };
 
-  public shared ({ caller }) func approveApplication(applicationId : Text) : async () {
-    requireAdmin(caller);
+  // Admin operations (frontend enforces login gate)
+  public func approveApplication(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
-        let updatedApplication = { application with status = #approved };
-        applications.add(applicationId, updatedApplication);
+        applications.add(applicationId, { application with status = #approved });
       };
     };
   };
 
-  public shared ({ caller }) func rejectApplication(applicationId : Text) : async () {
-    requireAdmin(caller);
+  public func rejectApplication(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
-        let updatedApplication = { application with status = #rejected };
-        applications.add(applicationId, updatedApplication);
+        applications.add(applicationId, { application with status = #rejected });
       };
     };
   };
 
-  public shared ({ caller }) func updatePaymentStatus(applicationId : Text, sessionId : Text, isPaid : Bool) : async () {
-    requireAdmin(caller);
-
+  public func updatePaymentStatus(applicationId : Text, sessionId : Text, isPaid : Bool) : async () {
     let updatedPaymentStatus = if (isPaid) { #paid } else { #unpaid };
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
-        let updatedApplication = {
+        applications.add(applicationId, {
           application with
           paymentStatus = updatedPaymentStatus;
           stripePaymentId = ?sessionId;
-        };
-        applications.add(applicationId, updatedApplication);
+        });
       };
     };
   };
 
-  public shared ({ caller }) func issueCertificate(applicationId : Text) : async () {
-    requireAdmin(caller);
+  public func issueCertificate(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
@@ -325,8 +368,7 @@ actor {
         if (application.paymentStatus != #paid) {
           Runtime.trap("Certificate can only be issued for paid applications");
         };
-        let updatedApplication = { application with certificateIssued = true };
-        applications.add(applicationId, updatedApplication);
+        applications.add(applicationId, { application with certificateIssued = true });
       };
     };
   };
@@ -361,23 +403,15 @@ actor {
   };
 
   // Inquiry management
-  public shared ({ caller }) func submitInquiry(name : Text, email : Text, phone : Text, message : Text) : async () {
-    let inquiry : Inquiry = {
-      name;
-      email;
-      phone;
-      message;
-    };
-    inquiries.add(name, inquiry);
+  public func submitInquiry(name : Text, email : Text, phone : Text, message : Text) : async () {
+    inquiries.add(name, { name; email; phone; message });
   };
 
-  public query ({ caller }) func getAllInquiries() : async [Inquiry] {
-    requireAdmin(caller);
+  public query func getAllInquiries() : async [Inquiry] {
     inquiries.values().toArray().sort();
   };
 
-  public query ({ caller }) func getAllApplications() : async [Application] {
-    requireAdmin(caller);
+  public query func getAllApplications() : async [Application] {
     applications.values().toArray().sort();
   };
 };

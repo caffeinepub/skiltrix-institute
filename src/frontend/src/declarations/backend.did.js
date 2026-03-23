@@ -59,6 +59,17 @@ export const Inquiry = IDL.Record({
   'message' : IDL.Text,
   'phone' : IDL.Text,
 });
+export const Analytics = IDL.Record({
+  'formSubmissions' : IDL.Nat,
+  'visitors' : IDL.Nat,
+});
+export const ApplicationStatusInfo = IDL.Record({
+  'status' : Status,
+  'applicationId' : ApplicationId,
+  'date' : IDL.Text,
+  'name' : IDL.Text,
+  'course' : IDL.Text,
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const StripeSessionStatus = IDL.Variant({
   'completed' : IDL.Record({
@@ -108,9 +119,15 @@ export const idlService = IDL.Service({
   'deleteCourse' : IDL.Func([IDL.Text], [], []),
   'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
   'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
+  'getAnalytics' : IDL.Func([], [Analytics], ['query']),
   'getApplicationByEmail' : IDL.Func(
       [IDL.Text],
       [IDL.Opt(Application)],
+      ['query'],
+    ),
+  'getApplicationStatus' : IDL.Func(
+      [ApplicationId],
+      [IDL.Opt(ApplicationStatusInfo)],
       ['query'],
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -126,8 +143,10 @@ export const idlService = IDL.Service({
   'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
   'issueCertificate' : IDL.Func([IDL.Text], [], []),
+  'recordVisit' : IDL.Func([], [], []),
   'rejectApplication' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setAdminCredentials' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'submitApplication' : IDL.Func([Application], [ApplicationId], []),
   'submitInquiry' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
@@ -138,6 +157,11 @@ export const idlService = IDL.Service({
     ),
   'updateCourse' : IDL.Func([Course], [], []),
   'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
+  'verifyAdminCredentials' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Bool],
+      ['query'],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -191,6 +215,17 @@ export const idlFactory = ({ IDL }) => {
     'message' : IDL.Text,
     'phone' : IDL.Text,
   });
+  const Analytics = IDL.Record({
+    'formSubmissions' : IDL.Nat,
+    'visitors' : IDL.Nat,
+  });
+  const ApplicationStatusInfo = IDL.Record({
+    'status' : Status,
+    'applicationId' : ApplicationId,
+    'date' : IDL.Text,
+    'name' : IDL.Text,
+    'course' : IDL.Text,
+  });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const StripeSessionStatus = IDL.Variant({
     'completed' : IDL.Record({
@@ -237,9 +272,15 @@ export const idlFactory = ({ IDL }) => {
     'deleteCourse' : IDL.Func([IDL.Text], [], []),
     'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
     'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
+    'getAnalytics' : IDL.Func([], [Analytics], ['query']),
     'getApplicationByEmail' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(Application)],
+        ['query'],
+      ),
+    'getApplicationStatus' : IDL.Func(
+        [ApplicationId],
+        [IDL.Opt(ApplicationStatusInfo)],
         ['query'],
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -255,8 +296,10 @@ export const idlFactory = ({ IDL }) => {
     'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
     'issueCertificate' : IDL.Func([IDL.Text], [], []),
+    'recordVisit' : IDL.Func([], [], []),
     'rejectApplication' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setAdminCredentials' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'submitApplication' : IDL.Func([Application], [ApplicationId], []),
     'submitInquiry' : IDL.Func(
@@ -271,6 +314,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'updateCourse' : IDL.Func([Course], [], []),
     'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
+    'verifyAdminCredentials' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
+        ['query'],
+      ),
   });
 };
 

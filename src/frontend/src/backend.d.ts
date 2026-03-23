@@ -7,8 +7,17 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface UserProfile {
+export type ApplicationId = string;
+export interface ApplicationStatusInfo {
+    status: Status;
+    applicationId: ApplicationId;
+    date: string;
     name: string;
+    course: string;
+}
+export interface ApplicationStageInfo {
+    applicationId: ApplicationId;
+    stage: string;
 }
 export interface Application {
     status: Status;
@@ -22,10 +31,6 @@ export interface Application {
     phone: string;
     certificateIssued: boolean;
     course: string;
-}
-export interface Analytics {
-    visitors: bigint;
-    formSubmissions: bigint;
 }
 export interface TransformationOutput {
     status: bigint;
@@ -58,6 +63,10 @@ export interface ShoppingItem {
     priceInCents: bigint;
     productDescription: string;
 }
+export interface Analytics {
+    formSubmissions: bigint;
+    visitors: bigint;
+}
 export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
@@ -80,10 +89,16 @@ export interface Inquiry {
     message: string;
     phone: string;
 }
-export type ApplicationId = string;
 export interface StripeConfiguration {
     allowedCountries: Array<string>;
     secretKey: string;
+}
+export interface UserProfile {
+    name: string;
+}
+export interface SubAdminInfo {
+    email: string;
+    name: string;
 }
 export enum PaymentStatus {
     paid = "paid",
@@ -105,15 +120,20 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     createDefaultCheckoutSession(successUrl: string, cancelUrl: string): Promise<string>;
+    createSubAdmin(email: string, name: string, password: string, mpin: string): Promise<void>;
     deleteCourse(title: string): Promise<void>;
+    deleteSubAdmin(email: string): Promise<void>;
     getAllApplications(): Promise<Array<Application>>;
     getAllInquiries(): Promise<Array<Inquiry>>;
     getAnalytics(): Promise<Analytics>;
     getApplicationByEmail(email: string): Promise<Application | null>;
+    getApplicationStages(): Promise<Array<ApplicationStageInfo>>;
+    getApplicationStatus(applicationId: ApplicationId): Promise<ApplicationStatusInfo | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCourses(): Promise<Array<Course>>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
+    getSubAdmins(): Promise<Array<SubAdminInfo>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     isCertificateIssued(applicationId: string): Promise<boolean>;
@@ -122,10 +142,13 @@ export interface backendInterface {
     recordVisit(): Promise<void>;
     rejectApplication(applicationId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setAdminCredentials(oldPassword: string, oldMpin: string, newEmail: string, newPassword: string, newMpin: string): Promise<boolean>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     submitApplication(application: Application): Promise<ApplicationId>;
     submitInquiry(name: string, email: string, phone: string, message: string): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
+    updateApplicationStage(applicationId: string, stage: string): Promise<void>;
     updateCourse(course: Course): Promise<void>;
     updatePaymentStatus(applicationId: string, sessionId: string, isPaid: boolean): Promise<void>;
+    verifyAdminCredentials(email: string, password: string, mpin: string): Promise<boolean>;
 }

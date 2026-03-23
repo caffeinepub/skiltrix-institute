@@ -10,6 +10,7 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface Analytics { 'formSubmissions' : bigint, 'visitors' : bigint }
 export interface Application {
   'status' : Status,
   'paymentStatus' : PaymentStatus,
@@ -24,6 +25,13 @@ export interface Application {
   'course' : string,
 }
 export type ApplicationId = string;
+export interface ApplicationStatusInfo {
+  'status' : Status,
+  'applicationId' : ApplicationId,
+  'date' : string,
+  'name' : string,
+  'course' : string,
+}
 export interface Course {
   'title' : string,
   'duration' : string,
@@ -92,7 +100,12 @@ export interface _SERVICE {
   'deleteCourse' : ActorMethod<[string], undefined>,
   'getAllApplications' : ActorMethod<[], Array<Application>>,
   'getAllInquiries' : ActorMethod<[], Array<Inquiry>>,
+  'getAnalytics' : ActorMethod<[], Analytics>,
   'getApplicationByEmail' : ActorMethod<[string], [] | [Application]>,
+  'getApplicationStatus' : ActorMethod<
+    [ApplicationId],
+    [] | [ApplicationStatusInfo]
+  >,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCourses' : ActorMethod<[], Array<Course>>,
@@ -102,14 +115,17 @@ export interface _SERVICE {
   'isCertificateIssued' : ActorMethod<[string], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'issueCertificate' : ActorMethod<[string], undefined>,
+  'recordVisit' : ActorMethod<[], undefined>,
   'rejectApplication' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setAdminCredentials' : ActorMethod<[string, string, string], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'submitApplication' : ActorMethod<[Application], ApplicationId>,
   'submitInquiry' : ActorMethod<[string, string, string, string], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'updateCourse' : ActorMethod<[Course], undefined>,
   'updatePaymentStatus' : ActorMethod<[string, string, boolean], undefined>,
+  'verifyAdminCredentials' : ActorMethod<[string, string, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
