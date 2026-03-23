@@ -7,6 +7,7 @@ import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
   useCreateCheckoutSession,
   useGetApplicationByEmail,
+  useGetIdCardByEmail,
   useGetStripeSessionStatus,
   useIsStripeConfigured,
   useUpdatePaymentStatus,
@@ -17,14 +18,19 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
+  Eye,
+  EyeOff,
   Loader2,
   Lock,
+  Printer,
   Search,
+  Shield,
+  User,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import type { Application } from "../backend.d";
+import type { Application, IdCardData } from "../backend.d";
 import { PaymentStatus, Status } from "../backend.d";
 import { CertificateModal } from "./CertificateModal";
 
@@ -65,13 +71,224 @@ function PaymentBadge({ status }: { status: PaymentStatus }) {
   );
 }
 
+function StudentIdCard({ idCard }: { idCard: IdCardData }) {
+  const [pinVisible, setPinVisible] = useState(false);
+
+  const handlePrint = () => {
+    const printContent = document.getElementById("skiltrix-id-card");
+    if (!printContent) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>SKILTRIX ID Card - ${idCard.name}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+          body { margin: 0; padding: 20px; background: #f0f4ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Plus Jakarta Sans', sans-serif; }
+          .card { width: 380px; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(11,41,82,0.25); }
+          .card-header { background: linear-gradient(135deg, #0B2952 0%, #0B5ED7 100%); padding: 20px 24px 16px; color: white; display: flex; align-items: center; gap: 12px; }
+          .academy-title { font-size: 18px; font-weight: 800; letter-spacing: 0.06em; line-height: 1.1; }
+          .card-subtitle { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; margin-top: 2px; }
+          .shield { width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+          .card-body { background: white; padding: 20px 24px; }
+          .photo-area { width: 68px; height: 68px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; color: #9ca3af; }
+          .field { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+          .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; font-weight: 600; }
+          .field-value { font-size: 13px; font-weight: 700; color: #111827; text-align: right; }
+          .name-display { text-align: center; font-size: 18px; font-weight: 800; color: #0B2952; margin-bottom: 16px; }
+          .pin-field { background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 8px; padding: 8px 12px; text-align: center; margin-top: 8px; }
+          .pin-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; }
+          .pin-value { font-size: 16px; font-weight: 800; color: #0B5ED7; font-family: monospace; letter-spacing: 0.2em; }
+          .card-footer { background: linear-gradient(135deg, #0B2952 0%, #1e40af 100%); padding: 10px 24px; }
+          .validity { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.8); text-align: center; margin-bottom: 4px; }
+          .barcode { display: flex; gap: 2px; justify-content: center; }
+          .bar { width: 2px; background: rgba(255,255,255,0.6); }
+          .divider { border: none; border-top: 1px solid #f3f4f6; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const barHeights = [
+    20, 28, 16, 32, 20, 12, 28, 20, 16, 28, 12, 24, 20, 28, 16, 20, 32, 12, 24,
+    28,
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.1 }}
+      data-ocid="dashboard.id_card"
+      className="space-y-4"
+    >
+      <div className="flex items-center gap-2">
+        <Shield className="h-5 w-5 text-blue-600" />
+        <h3 className="text-base font-bold text-foreground">
+          Your Student ID Card
+        </h3>
+      </div>
+
+      {/* The printable card */}
+      <div id="skiltrix-id-card" className="max-w-[380px] mx-auto">
+        <div
+          className="rounded-2xl overflow-hidden shadow-2xl"
+          style={{ boxShadow: "0 16px 48px rgba(11,41,82,0.22)" }}
+        >
+          {/* Header */}
+          <div
+            className="px-6 py-5 text-white"
+            style={{
+              background: "linear-gradient(135deg, #0B2952 0%, #0B5ED7 100%)",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <div className="text-lg font-extrabold tracking-wide leading-tight">
+                  SKILTRIX ACADEMY
+                </div>
+                <div className="text-[10px] tracking-[0.14em] uppercase opacity-80 mt-0.5">
+                  Student Identity Card
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gold strip */}
+          <div
+            className="h-1"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, #f59e0b, #fbbf24, #f59e0b, transparent)",
+            }}
+          />
+
+          {/* Body */}
+          <div className="bg-white px-6 py-5">
+            {/* Photo placeholder */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-blue-100 flex items-center justify-center">
+                <User className="h-8 w-8 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Name */}
+            <p className="text-center text-[17px] font-extrabold text-[#0B2952] mb-4">
+              {idCard.name}
+            </p>
+
+            {/* Fields */}
+            <div className="space-y-2.5">
+              {[
+                { label: "Roll No", value: idCard.rollNo },
+                { label: "Reg. No", value: idCard.registrationNumber },
+                { label: "Course", value: idCard.course },
+                { label: "Email", value: idCard.email },
+                { label: "Contact", value: idCard.phone },
+              ].map((f) => (
+                <div
+                  key={f.label}
+                  className="flex justify-between items-center border-b border-gray-100 pb-2"
+                >
+                  <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
+                    {f.label}
+                  </span>
+                  <span className="text-xs font-bold text-gray-800 text-right max-w-[200px] truncate">
+                    {f.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* PIN */}
+            <div className="mt-4 bg-blue-50 border border-dashed border-blue-200 rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-0.5">
+                    Security PIN
+                  </p>
+                  <p className="font-mono font-extrabold text-blue-700 tracking-[0.2em] text-lg">
+                    {pinVisible ? idCard.pin : "••••"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPinVisible((v) => !v)}
+                  data-ocid="dashboard.toggle"
+                  className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold bg-white border border-blue-200 rounded-full px-3 py-1.5 hover:bg-blue-50 transition-colors"
+                >
+                  {pinVisible ? (
+                    <>
+                      <EyeOff className="h-3 w-3" /> Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3" /> Reveal PIN
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer strip */}
+          <div
+            className="px-6 py-3"
+            style={{
+              background: "linear-gradient(135deg, #0B2952 0%, #1e40af 100%)",
+            }}
+          >
+            <p className="text-[10px] uppercase tracking-[0.12em] text-white/70 text-center mb-2">
+              Valid for Academic Year 2025-26
+            </p>
+            <div className="flex gap-[3px] justify-center items-end h-6">
+              {barHeights.map((h, i) => (
+                <div
+                  key={String(i)}
+                  className="w-[2px] bg-white/50 rounded-sm"
+                  style={{ height: `${h}px` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[380px] mx-auto">
+        <Button
+          onClick={handlePrint}
+          data-ocid="dashboard.secondary_button"
+          className="w-full gap-2 text-white rounded-full font-semibold"
+          style={{ backgroundColor: "#0B5ED7" }}
+        >
+          <Printer className="h-4 w-4" /> Download / Print ID Card
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
 function ApplicationCard({ app }: { app: Application }) {
   const [certOpen, setCertOpen] = useState(false);
   const createSession = useCreateCheckoutSession();
   const updatePayment = useUpdatePaymentStatus();
   const getSessionStatus = useGetStripeSessionStatus();
   const { data: stripeConfigured } = useIsStripeConfigured();
-  // Use a ref to run payment-return handling only once per mount
   const handledPaymentReturn = useRef(false);
 
   const canPay =
@@ -83,7 +300,6 @@ function ApplicationCard({ app }: { app: Application }) {
     app.paymentStatus === PaymentStatus.paid &&
     app.certificateIssued;
 
-  // Handle payment return from Stripe
   useEffect(() => {
     if (handledPaymentReturn.current) return;
     const params = new URLSearchParams(window.location.search);
@@ -272,12 +488,19 @@ function DashboardContent() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const lookup = useGetApplicationByEmail();
+  const idCardLookup = useGetIdCardByEmail();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     setSubmitted(true);
-    lookup.mutate(email.trim());
+    lookup.mutate(email.trim(), {
+      onSuccess: (app) => {
+        if (app) {
+          idCardLookup.mutate(email.trim());
+        }
+      },
+    });
   };
 
   return (
@@ -371,7 +594,13 @@ function DashboardContent() {
           !lookup.isPending &&
           lookup.data !== undefined &&
           (lookup.data ? (
-            <ApplicationCard app={lookup.data} />
+            <div className="space-y-6">
+              <ApplicationCard app={lookup.data} />
+              {/* ID Card section */}
+              {idCardLookup.data && (
+                <StudentIdCard idCard={idCardLookup.data} />
+              )}
+            </div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 16 }}

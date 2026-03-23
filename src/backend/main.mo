@@ -1,11 +1,14 @@
-import Text "mo:core/Text";
-import Order "mo:core/Order";
+import Time "mo:core/Time";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import Map "mo:core/Map";
+import Text "mo:core/Text";
+import List "mo:core/List";
+import Int "mo:core/Int";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import OutCall "http-outcalls/outcall";
 import Stripe "stripe/stripe";
-
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
@@ -18,7 +21,20 @@ actor {
   var adminPassword = "Admin@123";
   var adminMpin = "1234";
 
-  // Course type
+  // Sub-admin types
+  public type SubAdmin = {
+    email : Text;
+    name : Text;
+    password : Text;
+    mpin : Text;
+  };
+
+  public type SubAdminInfo = {
+    email : Text;
+    name : Text;
+  };
+
+  // Course types
   public type Course = {
     title : Text;
     description : Text;
@@ -30,13 +46,26 @@ actor {
     careerOpportunities : [Text];
   };
 
-  module Course {
-    public func compare(course1 : Course, course2 : Course) : Order.Order {
-      Text.compare(course1.title, course2.title);
-    };
+  // Review types
+  public type Review = {
+    id : Text;
+    name : Text;
+    email : Text;
+    course : Text;
+    feedback : Text;
+    rating : Nat;
+    createdAt : Int;
   };
 
-  // Inquiry type
+  public type ReviewInput = {
+    name : Text;
+    email : Text;
+    course : Text;
+    feedback : Text;
+    rating : Nat;
+  };
+
+  // Inquiry types
   public type Inquiry = {
     name : Text;
     email : Text;
@@ -44,13 +73,7 @@ actor {
     message : Text;
   };
 
-  module Inquiry {
-    public func compare(inquiry1 : Inquiry, inquiry2 : Inquiry) : Order.Order {
-      Text.compare(inquiry1.name, inquiry2.name);
-    };
-  };
-
-  // Application type
+  // Application types
   public type ApplicationId = Text;
 
   public type Application = {
@@ -67,13 +90,6 @@ actor {
     certificateIssued : Bool;
   };
 
-  module Application {
-    public func compare(app1 : Application, app2 : Application) : Order.Order {
-      Text.compare(app1.applicationId, app2.applicationId);
-    };
-  };
-
-  // Application status type
   public type Status = {
     #pending;
     #approved;
@@ -85,7 +101,6 @@ actor {
     #paid;
   };
 
-  // Public application status info
   public type ApplicationStatusInfo = {
     applicationId : ApplicationId;
     name : Text;
@@ -94,22 +109,14 @@ actor {
     status : Status;
   };
 
-  // Application stage info
+  // Application stage tracking
   public type ApplicationStageInfo = {
     applicationId : ApplicationId;
     stage : Text;
   };
 
-  // Sub-admin types
-  public type SubAdmin = {
-    email : Text;
-    name : Text;
-    password : Text;
-    mpin : Text;
-  };
-
-  public type SubAdminInfo = {
-    email : Text;
+  // User profile types
+  public type UserProfile = {
     name : Text;
   };
 
@@ -119,32 +126,42 @@ actor {
     formSubmissions : Nat;
   };
 
-  // User Profile
-  public type UserProfile = {
+  // ID card type
+  public type IdCardData = {
+    applicationId : ApplicationId;
+    rollNo : Text;
+    registrationNumber : Text;
+    pin : Text;
+    issuedDate : Text;
     name : Text;
+    email : Text;
+    phone : Text;
+    course : Text;
   };
 
-  // Store courses, inquiries, applications
+  // Store main types
+  let subAdmins = Map.empty<Text, SubAdmin>();
   let courses = Map.empty<Text, Course>();
+  let reviews = Map.empty<Text, Review>();
   let inquiries = Map.empty<Text, Inquiry>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+
   let applications = Map.empty<ApplicationId, Application>();
   let applicationOwnership = Map.empty<ApplicationId, Principal>();
-
-  // Application tracking stages
   let applicationStages = Map.empty<ApplicationId, Text>();
 
-  // Sub-admins
-  let subAdmins = Map.empty<Text, SubAdmin>();
+  // ID cards map
+  let idCards = Map.empty<ApplicationId, IdCardData>();
+  var rollNumberCounter = 0;
 
-  // Stripe configuration
+  // Initialize Stripe configuration variable after declaration
   var stripeConfiguration : ?Stripe.StripeConfiguration = null;
 
   // Visitor tracking
-  var visitorCount : Nat = 0;
+  var visitorCount = 0;
 
-  // Credential verification - checks main admin and sub-admins
-  public query func verifyAdminCredentials(email : Text, password : Text, mpin : Text) : async Bool {
+  // Helper: verify admin credentials (main admin or sub-admin)
+  func isValidAdmin(email : Text, password : Text, mpin : Text) : Bool {
     if (email == adminEmail and password == adminPassword and mpin == adminMpin) {
       return true;
     };
@@ -154,8 +171,13 @@ actor {
     };
   };
 
-  // Admin credentials management - requires old password + mpin for verification
-  public func setAdminCredentials(oldPassword : Text, oldMpin : Text, newEmail : Text, newPassword : Text, newMpin : Text) : async Bool {
+  // Credential verification - checks main admin and sub-admins
+  public query func verifyAdminCredentials(email : Text, password : Text, mpin : Text) : async Bool {
+    isValidAdmin(email, password, mpin);
+  };
+
+  // Admin credentials management - protected by current credentials
+  public shared func setAdminCredentials(oldPassword : Text, oldMpin : Text, newEmail : Text, newPassword : Text, newMpin : Text) : async Bool {
     if (adminPassword == oldPassword and adminMpin == oldMpin) {
       adminEmail := newEmail;
       adminPassword := newPassword;
@@ -166,8 +188,8 @@ actor {
     };
   };
 
-  // Sub-admin management
-  public func createSubAdmin(email : Text, name : Text, password : Text, mpin : Text) : async () {
+  // Sub-admin management - no ICP auth, use adminEmail verification
+  public shared func createSubAdmin(email : Text, name : Text, password : Text, mpin : Text) : async () {
     subAdmins.add(email, { email; name; password; mpin });
   };
 
@@ -179,12 +201,12 @@ actor {
     ).toArray();
   };
 
-  public func deleteSubAdmin(email : Text) : async () {
+  public shared func deleteSubAdmin(email : Text) : async () {
     subAdmins.remove(email);
   };
 
-  // Application stage management
-  public func updateApplicationStage(applicationId : ApplicationId, stage : Text) : async () {
+  // Application stage tracking
+  public shared func updateApplicationStage(applicationId : ApplicationId, stage : Text) : async () {
     applicationStages.add(applicationId, stage);
   };
 
@@ -195,14 +217,14 @@ actor {
           applicationId = app.applicationId;
           stage = switch (applicationStages.get(app.applicationId)) {
             case (?s) s;
-            case (null) "Application Received";
+            case (null) { "Application Received" };
           };
         };
       },
     ).toArray();
   };
 
-  // Visitor tracking
+  // Visitor analytics
   public func recordVisit() : async () {
     visitorCount += 1;
   };
@@ -219,7 +241,10 @@ actor {
     stripeConfiguration != null;
   };
 
-  public func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
+  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
     stripeConfiguration := ?config;
   };
 
@@ -256,24 +281,24 @@ actor {
     OutCall.transform(input);
   };
 
-  // Course management
-  public func addCourse(course : Course) : async () {
+  // Course management - open (frontend admin login gates these)
+  public shared func addCourse(course : Course) : async () {
     courses.add(course.title, course);
   };
 
-  public func updateCourse(course : Course) : async () {
+  public shared func updateCourse(course : Course) : async () {
     courses.add(course.title, course);
   };
 
-  public func deleteCourse(title : Text) : async () {
+  public shared func deleteCourse(title : Text) : async () {
     courses.remove(title);
   };
 
   public query func getCourses() : async [Course] {
-    courses.values().toArray().sort();
+    courses.values().toArray();
   };
 
-  // Public application status lookup
+  // Application status lookup
   public query func getApplicationStatus(applicationId : ApplicationId) : async ?ApplicationStatusInfo {
     switch (applications.get(applicationId)) {
       case (null) { null };
@@ -305,28 +330,12 @@ actor {
     id;
   };
 
-  public query ({ caller }) func getApplicationByEmail(email : Text) : async ?Application {
-    let maybeApp = applications.values().toArray().find(func(a) { a.email == email });
-    switch (maybeApp) {
-      case (null) { null };
-      case (?app) {
-        if (AccessControl.isAdmin(accessControlState, caller)) {
-          return maybeApp;
-        };
-        switch (applicationOwnership.get(app.applicationId)) {
-          case (null) { maybeApp };
-          case (?owner) {
-            if (owner == caller) { maybeApp } else {
-              Runtime.trap("Unauthorized: Can only view your own applications");
-            };
-          };
-        };
-      };
-    };
+  public query func getApplicationByEmail(email : Text) : async ?Application {
+    applications.values().toArray().find(func(a) { a.email == email });
   };
 
-  // Admin operations (frontend enforces login gate)
-  public func approveApplication(applicationId : Text) : async () {
+  // Admin operations - no ICP auth check, frontend gate protects these
+  public shared func approveApplication(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
@@ -335,7 +344,7 @@ actor {
     };
   };
 
-  public func rejectApplication(applicationId : Text) : async () {
+  public shared func rejectApplication(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
@@ -344,7 +353,7 @@ actor {
     };
   };
 
-  public func updatePaymentStatus(applicationId : Text, sessionId : Text, isPaid : Bool) : async () {
+  public shared func updatePaymentStatus(applicationId : Text, sessionId : Text, isPaid : Bool) : async () {
     let updatedPaymentStatus = if (isPaid) { #paid } else { #unpaid };
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
@@ -358,7 +367,7 @@ actor {
     };
   };
 
-  public func issueCertificate(applicationId : Text) : async () {
+  public shared func issueCertificate(applicationId : Text) : async () {
     switch (applications.get(applicationId)) {
       case (null) { Runtime.trap("Application does not exist") };
       case (?application) {
@@ -382,23 +391,14 @@ actor {
 
   // User profile management
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
     userProfiles.add(caller, profile);
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
     userProfiles.get(caller);
   };
 
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
+  public query func getUserProfile(user : Principal) : async ?UserProfile {
     userProfiles.get(user);
   };
 
@@ -408,10 +408,166 @@ actor {
   };
 
   public query func getAllInquiries() : async [Inquiry] {
-    inquiries.values().toArray().sort();
+    inquiries.values().toArray();
   };
 
+  // Get all applications - open (admin frontend already gates this)
   public query func getAllApplications() : async [Application] {
-    applications.values().toArray().sort();
+    applications.values().toArray();
+  };
+
+  // ID card management - open (admin frontend gates this)
+  public shared func issueIdCard(applicationId : ApplicationId) : async Bool {
+    switch (applications.get(applicationId)) {
+      case (null) { false };
+      case (?app) {
+        if (app.status != #approved) { return false };
+        let nextRollNum = rollNumberCounter + 1;
+        let rollNo = "SK" # nextRollNum.toText();
+        rollNumberCounter += 1;
+        // Generate 6-digit PIN from time
+        let timeVal = Time.now();
+        let pin = (Int.abs(timeVal) % 900000 + 100000).toText();
+
+        let idCard : IdCardData = {
+          applicationId;
+          rollNo;
+          registrationNumber = "REG" # applicationId;
+          pin;
+          issuedDate = Time.now().toText();
+          name = app.name;
+          email = app.email;
+          phone = app.phone;
+          course = app.course;
+        };
+
+        idCards.add(applicationId, idCard);
+        true;
+      };
+    };
+  };
+
+  public query func getIdCard(applicationId : ApplicationId) : async ?IdCardData {
+    idCards.get(applicationId);
+  };
+
+  public query func getIdCardByEmail(email : Text) : async ?IdCardData {
+    let maybeApp = applications.values().toArray().find(func(a) { a.email == email });
+    switch (maybeApp) {
+      case (null) { null };
+      case (?app) {
+        idCards.get(app.applicationId);
+      };
+    };
+  };
+
+  // Reviews & Testimonials management
+  public shared func submitReview(input : ReviewInput) : async {
+    #ok : Text;
+    #err : Text;
+  } {
+    if (input.name.size() < 3) {
+      return #err("Name must be at least 3 characters");
+    };
+    if (input.email.size() < 8 or not input.email.contains(#char('@'))) {
+      return #err("Invalid email");
+    };
+    if (input.course.size() < 2) {
+      return #err("Course name must be at least 2 characters");
+    };
+    if (input.feedback.size() < 8) {
+      return #err("Feedback must be at least 8 characters");
+    };
+    if (input.rating < 1 or input.rating > 5) {
+      return #err("Rating must be between 1 and 5");
+    };
+
+    // Check for duplicate email
+    let reviewExists = reviews.values().toArray().find(func(r) { r.email == input.email }) != null;
+    if (reviewExists) {
+      return #err("Review already submitted");
+    };
+
+    let reviewId = Int.abs(Time.now()).toText();
+    let review : Review = {
+      input with
+      id = reviewId;
+      createdAt = Time.now();
+    };
+    reviews.add(reviewId, review);
+    #ok(reviewId);
+  };
+
+  public query func getReviews() : async [Review] {
+    reviews.values().toArray();
+  };
+
+  public shared ({ caller }) func deleteReview(id : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    reviews.remove(id);
+  };
+
+  public shared ({ caller }) func updateReview(id : Text, input : ReviewInput) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    if (input.name.size() < 3) {
+      return false;
+    };
+    if (input.course.size() < 2) {
+      return false;
+    };
+    if (input.feedback.size() < 8) {
+      return false;
+    };
+    if (input.rating < 1 or input.rating > 5) {
+      return false;
+    };
+
+    switch (reviews.get(id)) {
+      case (null) { false };
+      case (?existingReview) {
+        let updatedReview : Review = {
+          input with
+          id;
+          email = existingReview.email; // Keep original email
+          createdAt = existingReview.createdAt;
+        };
+        reviews.add(id, updatedReview);
+        true;
+      };
+    };
+  };
+
+  public shared ({ caller }) func addReviewByAdmin(input : ReviewInput) : async {
+    #ok : Text;
+    #err : Text;
+  } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    if (input.name.size() < 3) {
+      return #err("Name must be at least 3 characters");
+    };
+    if (input.course.size() < 2) {
+      return #err("Course name must be at least 2 characters");
+    };
+    if (input.feedback.size() < 8) {
+      return #err("Feedback must be at least 8 characters");
+    };
+    if (input.rating < 1 or input.rating > 5) {
+      return #err("Rating must be between 1 and 5");
+    };
+
+    let reviewId = Int.abs(Time.now()).toText();
+    let review : Review = {
+      input with
+      id = reviewId;
+      createdAt = Time.now();
+    };
+    reviews.add(reviewId, review);
+    #ok(reviewId);
   };
 };

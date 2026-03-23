@@ -8,6 +8,7 @@ import { CoursesSection } from "@/components/CoursesSection";
 import { Footer } from "@/components/Footer";
 import { HeroSection } from "@/components/HeroSection";
 import { Navbar } from "@/components/Navbar";
+import { ReviewPopup } from "@/components/ReviewPopup";
 import { StudentDashboard } from "@/components/StudentDashboard";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { TrackApplication } from "@/components/TrackApplication";
@@ -60,6 +61,12 @@ function WhatsAppButton() {
   );
 }
 
+interface ReviewData {
+  name: string;
+  email: string;
+  course: string;
+}
+
 function PublicView({
   onApplyClick,
 }: {
@@ -95,6 +102,12 @@ function AppContent() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyCourse, setApplyCourse] = useState<string>("");
   const [view, setView] = useState<View>(getView);
+  const [reviewPopupOpen, setReviewPopupOpen] = useState(false);
+  const [reviewData, setReviewData] = useState<ReviewData>({
+    name: "",
+    email: "",
+    course: "",
+  });
 
   useEffect(() => {
     const handleHash = () => setView(getView());
@@ -105,6 +118,15 @@ function AppContent() {
   const handleApplyClick = (course?: string) => {
     setApplyCourse(course ?? "");
     setApplyOpen(true);
+  };
+
+  const handleApplicationSubmitted = (
+    name: string,
+    email: string,
+    course: string,
+  ) => {
+    setReviewData({ name, email, course });
+    setReviewPopupOpen(true);
   };
 
   if (view === "admin") {
@@ -144,6 +166,14 @@ function AppContent() {
           if (!val) setApplyCourse("");
         }}
         preSelectedCourse={applyCourse}
+        onApplicationSubmitted={handleApplicationSubmitted}
+      />
+      <ReviewPopup
+        open={reviewPopupOpen}
+        onOpenChange={setReviewPopupOpen}
+        applicantName={reviewData.name}
+        applicantEmail={reviewData.email}
+        applicantCourse={reviewData.course}
       />
       <CareerGuidancePopup />
       <Toaster />

@@ -18,6 +18,13 @@ export const Course = IDL.Record({
   'skills' : IDL.Vec(IDL.Text),
   'careerOpportunities' : IDL.Vec(IDL.Text),
 });
+export const ReviewInput = IDL.Record({
+  'name' : IDL.Text,
+  'feedback' : IDL.Text,
+  'email' : IDL.Text,
+  'rating' : IDL.Nat,
+  'course' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -63,6 +70,10 @@ export const Analytics = IDL.Record({
   'formSubmissions' : IDL.Nat,
   'visitors' : IDL.Nat,
 });
+export const ApplicationStageInfo = IDL.Record({
+  'applicationId' : ApplicationId,
+  'stage' : IDL.Text,
+});
 export const ApplicationStatusInfo = IDL.Record({
   'status' : Status,
   'applicationId' : ApplicationId,
@@ -71,12 +82,36 @@ export const ApplicationStatusInfo = IDL.Record({
   'course' : IDL.Text,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const IdCardData = IDL.Record({
+  'pin' : IDL.Text,
+  'applicationId' : ApplicationId,
+  'name' : IDL.Text,
+  'registrationNumber' : IDL.Text,
+  'email' : IDL.Text,
+  'issuedDate' : IDL.Text,
+  'phone' : IDL.Text,
+  'rollNo' : IDL.Text,
+  'course' : IDL.Text,
+});
+export const Review = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'feedback' : IDL.Text,
+  'email' : IDL.Text,
+  'rating' : IDL.Nat,
+  'course' : IDL.Text,
+});
 export const StripeSessionStatus = IDL.Variant({
   'completed' : IDL.Record({
     'userPrincipal' : IDL.Opt(IDL.Text),
     'response' : IDL.Text,
   }),
   'failed' : IDL.Record({ 'error' : IDL.Text }),
+});
+export const SubAdminInfo = IDL.Record({
+  'name' : IDL.Text,
+  'email' : IDL.Text,
 });
 export const StripeConfiguration = IDL.Record({
   'allowedCountries' : IDL.Vec(IDL.Text),
@@ -104,6 +139,11 @@ export const TransformationOutput = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addCourse' : IDL.Func([Course], [], []),
+  'addReviewByAdmin' : IDL.Func(
+      [ReviewInput],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'approveApplication' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createCheckoutSession' : IDL.Func(
@@ -116,13 +156,21 @@ export const idlService = IDL.Service({
       [IDL.Text],
       [],
     ),
+  'createSubAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
   'deleteCourse' : IDL.Func([IDL.Text], [], []),
+  'deleteReview' : IDL.Func([IDL.Text], [], []),
+  'deleteSubAdmin' : IDL.Func([IDL.Text], [], []),
   'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
   'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
   'getAnalytics' : IDL.Func([], [Analytics], ['query']),
   'getApplicationByEmail' : IDL.Func(
       [IDL.Text],
       [IDL.Opt(Application)],
+      ['query'],
+    ),
+  'getApplicationStages' : IDL.Func(
+      [],
+      [IDL.Vec(ApplicationStageInfo)],
       ['query'],
     ),
   'getApplicationStatus' : IDL.Func(
@@ -133,7 +181,11 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+  'getIdCard' : IDL.Func([ApplicationId], [IDL.Opt(IdCardData)], ['query']),
+  'getIdCardByEmail' : IDL.Func([IDL.Text], [IDL.Opt(IdCardData)], ['query']),
+  'getReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
+  'getSubAdmins' : IDL.Func([], [IDL.Vec(SubAdminInfo)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -143,20 +195,32 @@ export const idlService = IDL.Service({
   'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
   'issueCertificate' : IDL.Func([IDL.Text], [], []),
+  'issueIdCard' : IDL.Func([ApplicationId], [IDL.Bool], []),
   'recordVisit' : IDL.Func([], [], []),
   'rejectApplication' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'setAdminCredentials' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+  'setAdminCredentials' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Bool],
+      [],
+    ),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'submitApplication' : IDL.Func([Application], [ApplicationId], []),
   'submitInquiry' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
+  'submitReview' : IDL.Func(
+      [ReviewInput],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
       ['query'],
     ),
+  'updateApplicationStage' : IDL.Func([ApplicationId, IDL.Text], [], []),
   'updateCourse' : IDL.Func([Course], [], []),
   'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
+  'updateReview' : IDL.Func([IDL.Text, ReviewInput], [IDL.Bool], []),
   'verifyAdminCredentials' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
       [IDL.Bool],
@@ -176,6 +240,13 @@ export const idlFactory = ({ IDL }) => {
     'category' : IDL.Text,
     'skills' : IDL.Vec(IDL.Text),
     'careerOpportunities' : IDL.Vec(IDL.Text),
+  });
+  const ReviewInput = IDL.Record({
+    'name' : IDL.Text,
+    'feedback' : IDL.Text,
+    'email' : IDL.Text,
+    'rating' : IDL.Nat,
+    'course' : IDL.Text,
   });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
@@ -219,6 +290,10 @@ export const idlFactory = ({ IDL }) => {
     'formSubmissions' : IDL.Nat,
     'visitors' : IDL.Nat,
   });
+  const ApplicationStageInfo = IDL.Record({
+    'applicationId' : ApplicationId,
+    'stage' : IDL.Text,
+  });
   const ApplicationStatusInfo = IDL.Record({
     'status' : Status,
     'applicationId' : ApplicationId,
@@ -227,6 +302,26 @@ export const idlFactory = ({ IDL }) => {
     'course' : IDL.Text,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const IdCardData = IDL.Record({
+    'pin' : IDL.Text,
+    'applicationId' : ApplicationId,
+    'name' : IDL.Text,
+    'registrationNumber' : IDL.Text,
+    'email' : IDL.Text,
+    'issuedDate' : IDL.Text,
+    'phone' : IDL.Text,
+    'rollNo' : IDL.Text,
+    'course' : IDL.Text,
+  });
+  const Review = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'feedback' : IDL.Text,
+    'email' : IDL.Text,
+    'rating' : IDL.Nat,
+    'course' : IDL.Text,
+  });
   const StripeSessionStatus = IDL.Variant({
     'completed' : IDL.Record({
       'userPrincipal' : IDL.Opt(IDL.Text),
@@ -234,6 +329,7 @@ export const idlFactory = ({ IDL }) => {
     }),
     'failed' : IDL.Record({ 'error' : IDL.Text }),
   });
+  const SubAdminInfo = IDL.Record({ 'name' : IDL.Text, 'email' : IDL.Text });
   const StripeConfiguration = IDL.Record({
     'allowedCountries' : IDL.Vec(IDL.Text),
     'secretKey' : IDL.Text,
@@ -257,6 +353,11 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addCourse' : IDL.Func([Course], [], []),
+    'addReviewByAdmin' : IDL.Func(
+        [ReviewInput],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'approveApplication' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createCheckoutSession' : IDL.Func(
@@ -269,13 +370,25 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Text],
         [],
       ),
+    'createSubAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'deleteCourse' : IDL.Func([IDL.Text], [], []),
+    'deleteReview' : IDL.Func([IDL.Text], [], []),
+    'deleteSubAdmin' : IDL.Func([IDL.Text], [], []),
     'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
     'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
     'getAnalytics' : IDL.Func([], [Analytics], ['query']),
     'getApplicationByEmail' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(Application)],
+        ['query'],
+      ),
+    'getApplicationStages' : IDL.Func(
+        [],
+        [IDL.Vec(ApplicationStageInfo)],
         ['query'],
       ),
     'getApplicationStatus' : IDL.Func(
@@ -286,7 +399,11 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+    'getIdCard' : IDL.Func([ApplicationId], [IDL.Opt(IdCardData)], ['query']),
+    'getIdCardByEmail' : IDL.Func([IDL.Text], [IDL.Opt(IdCardData)], ['query']),
+    'getReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
+    'getSubAdmins' : IDL.Func([], [IDL.Vec(SubAdminInfo)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -296,10 +413,15 @@ export const idlFactory = ({ IDL }) => {
     'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
     'issueCertificate' : IDL.Func([IDL.Text], [], []),
+    'issueIdCard' : IDL.Func([ApplicationId], [IDL.Bool], []),
     'recordVisit' : IDL.Func([], [], []),
     'rejectApplication' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'setAdminCredentials' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+    'setAdminCredentials' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
+        [],
+      ),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'submitApplication' : IDL.Func([Application], [ApplicationId], []),
     'submitInquiry' : IDL.Func(
@@ -307,13 +429,20 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'submitReview' : IDL.Func(
+        [ReviewInput],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
         ['query'],
       ),
+    'updateApplicationStage' : IDL.Func([ApplicationId, IDL.Text], [], []),
     'updateCourse' : IDL.Func([Course], [], []),
     'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
+    'updateReview' : IDL.Func([IDL.Text, ReviewInput], [IDL.Bool], []),
     'verifyAdminCredentials' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [IDL.Bool],

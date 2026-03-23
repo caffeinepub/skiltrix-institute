@@ -1,28 +1,47 @@
 # SKILTRIX Institute
 
 ## Current State
-The app has a Motoko backend with persistent storage for applications, courses, inquiries, and analytics. The admin panel uses email/password/MPIN credentials for login (frontend-only check via sessionStorage). However, all backend admin functions use `requireAdmin(caller)` which checks Internet Identity principal -- the anonymous caller from the frontend never passes this check, so `getAllApplications`, `getAnalytics`, and all mutation operations silently fail.
+Full-stack educational institute management platform with:
+- Public website: Hero, About, Courses (with sample course fallback), Testimonials (hardcoded), CTA, Contact
+- Admin panel: Application management, course CRUD, analytics, sub-admin management, ID card issuance
+- Student dashboard: Application status, payment, certificate, ID card
+- Backend: Applications, courses, ID cards, analytics, Stripe, sub-admins
+- Some mobile responsiveness but not fully optimized
+- Hero uses a generated background image with dark overlay
+- Testimonials are hardcoded static data
 
 ## Requested Changes (Diff)
 
 ### Add
-- Course management in admin panel: create, update, delete courses with full fields (title, description, duration, fees, category, icon, skills, careerOpportunities)
-- Application tracking stage: admin can update per-application stage (Application Received, Documents Under Review, Interview Scheduled, Enrolled, Completed, Rejected)
-- Change admin credentials: admin can update email/password/MPIN from within the panel (requires old password + MPIN verification)
-- Sub-admin management: admin can create new sub-admins with name/email/password/MPIN; sub-admins can also log in; admin can delete sub-admins
-- New backend functions: `updateApplicationStage`, `getApplicationStages`, `createSubAdmin`, `getSubAdmins`, `deleteSubAdmin`, updated `setAdminCredentials`
+- Reviews system (backend): Review type with id, name, email, course, feedback, rating, createdAt fields
+- submitReview() - one review per email (enforced by backend)
+- getReviews() - public query
+- updateReview() - admin only (frontend gate)
+- deleteReview() - admin only
+- addReview() - admin can add review directly
+- ReviewPopup component: Appears after successful application form submission, asks user to leave a review
+- Reviews tab in admin panel: View, edit, delete, add reviews
+- Admin can edit/delete/add reviews from admin panel Reviews tab
 
 ### Modify
-- Remove `requireAdmin(caller)` from ALL backend functions: `getAllApplications`, `getAnalytics`, `approveApplication`, `rejectApplication`, `issueCertificate`, `updatePaymentStatus`, `setStripeConfiguration`, `addCourse`, `updateCourse`, `deleteCourse`, `getAllInquiries`
-- `setAdminCredentials` now takes old password + old MPIN for verification instead of requiring Internet Identity admin principal
-- `verifyAdminCredentials` also checks sub-admin credentials
-- Admin panel gets new sections/tabs: Applications, Courses, Settings
+- CoursesSection: Remove SAMPLE_COURSES fallback — show only backend courses (empty state if none)
+- TestimonialsSection: Load reviews from backend in real-time instead of hardcoded data; auto-refresh after new submission
+- HeroSection: Add more premium, visually rich background (regenerate hero image)
+- All components: Improve mobile responsiveness (responsive typography, stacked layouts, touch-friendly buttons, proper padding on small screens)
+- App.tsx: Pass review popup trigger after application submission
 
 ### Remove
-- `requireAdmin` checks from all admin-facing backend functions (frontend enforces auth via login gate)
+- SAMPLE_COURSES array from CoursesSection
+- Hardcoded testimonials array from TestimonialsSection
 
 ## Implementation Plan
-1. Update `main.mo`: remove all `requireAdmin` checks from admin operations; add sub-admin storage and CRUD; add application stage storage and update function; fix `setAdminCredentials` to verify old password/mpin; update `verifyAdminCredentials` to check sub-admins
-2. Update `backend.d.ts`: add `SubAdmin`, `SubAdminInfo`, `ApplicationStageInfo` types; add new function signatures
-3. Update `useQueries.ts`: add hooks for `updateApplicationStage`, `getApplicationStages`, `createSubAdmin`, `getSubAdmins`, `deleteSubAdmin`, `setAdminCredentials`
-4. Rebuild `AdminPanel.tsx` with three tabs: Applications (with stage update), Courses (CRUD), Settings (credentials + sub-admins)
+1. Add Review type and CRUD functions to Motoko backend
+2. Generate new premium hero background image
+3. Update frontend:
+   a. CoursesSection: remove sample courses
+   b. TestimonialsSection: fetch from backend, real-time updates
+   c. Add ReviewPopup component
+   d. Add useQueries hooks for reviews
+   e. Wire ReviewPopup into App.tsx after application submission
+   f. Add Reviews tab in AdminPanel
+   g. Mobile-friendly improvements across Navbar, HeroSection, AboutSection, CoursesSection, TestimonialsSection, Footer, ApplyModal

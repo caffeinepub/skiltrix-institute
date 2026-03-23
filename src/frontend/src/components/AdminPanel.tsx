@@ -29,20 +29,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAddCourse,
+  useAddReviewByAdmin,
   useApproveApplication,
   useCreateSubAdmin,
   useDeleteCourse,
+  useDeleteReview,
   useDeleteSubAdmin,
   useGetAllApplications,
   useGetAnalytics,
   useGetApplicationStages,
   useGetCourses,
+  useGetReviews,
   useGetSubAdmins,
   useIssueCertificate,
+  useIssueIdCard,
   useRejectApplication,
   useSetAdminCredentials,
   useUpdateApplicationStage,
   useUpdateCourse,
+  useUpdateReview,
   useVerifyAdminCredentials,
 } from "@/hooks/useQueries";
 import {
@@ -52,6 +57,7 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
+  CreditCard,
   Edit2,
   Eye,
   FileText,
@@ -60,6 +66,7 @@ import {
   Lock,
   LogOut,
   Plus,
+  Search,
   Settings,
   ShieldCheck,
   Trash2,
@@ -67,6 +74,7 @@ import {
   UserPlus,
   Users,
   XCircle,
+  X as XIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -86,7 +94,7 @@ const TRACKING_STAGES = [
 ];
 
 type FilterTab = "all" | Status;
-type AdminTab = "dashboard" | "courses" | "settings";
+type AdminTab = "dashboard" | "courses" | "reviews" | "settings";
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -892,12 +900,14 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
 
 function DashboardTab() {
   const [filter, setFilter] = useState<FilterTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: applications = [], isLoading } = useGetAllApplications();
   const { data: stages = [] } = useGetApplicationStages();
   const { data: analytics } = useGetAnalytics();
   const approveApp = useApproveApplication();
   const rejectApp = useRejectApplication();
   const issueCert = useIssueCertificate();
+  const issueIdCard = useIssueIdCard();
   const updateStage = useUpdateApplicationStage();
 
   const stageMap = new Map<string, string>(
@@ -924,6 +934,14 @@ function DashboardTab() {
     filter === "all"
       ? applications
       : applications.filter((a) => a.status === filter);
+
+  const searchFiltered = searchQuery.trim()
+    ? filtered.filter(
+        (a) =>
+          a.applicationId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          a.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : filtered;
 
   return (
     <div className="space-y-8">
@@ -1011,7 +1029,34 @@ function DashboardTab() {
         transition={{ duration: 0.4, delay: 0.1 }}
         className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden"
       >
-        <div className="px-6 pt-5 pb-0 border-b border-border">
+        <div className="px-6 pt-5 pb-3 border-b border-border space-y-3">
+          {/* Search bar */}
+          <div className="relative flex items-center gap-2">
+            <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by Application ID or Email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-ocid="admin.search_input"
+              className="w-full pl-9 pr-10 h-9 rounded-full border border-border bg-muted/40 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-blue/40 focus:border-brand-blue transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          {searchQuery.trim() && (
+            <p className="text-xs text-muted-foreground px-1">
+              Showing {searchFiltered.length} of {filtered.length} applications
+            </p>
+          )}
           <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
             <TabsList className="bg-muted/60 rounded-full h-9">
               <TabsTrigger
@@ -1052,7 +1097,7 @@ function DashboardTab() {
               <Skeleton key={key} className="h-12 w-full rounded-lg" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : searchFiltered.length === 0 ? (
           <div data-ocid="admin.empty_state" className="py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground font-medium">
@@ -1081,7 +1126,7 @@ function DashboardTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((app, i) => {
+                {searchFiltered.map((app, i) => {
                   const currentStage = stageMap.get(app.applicationId) ?? "";
                   const isActing =
                     approveApp.isPending ||
@@ -1202,6 +1247,30 @@ function DashboardTab() {
                               <Award className="h-3 w-3" /> Cert Issued
                             </Badge>
                           )}
+                          {app.status === Status.approved && (
+                            <Button
+                              size="sm"
+                              disabled={issueIdCard.isPending}
+                              onClick={() =>
+                                issueIdCard.mutate(app.applicationId, {
+                                  onSuccess: () => {
+                                    // toast is shown in the UI via success state
+                                  },
+                                })
+                              }
+                              data-ocid={`admin.edit_button.${i + 1}`}
+                              className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-3 text-xs rounded-full gap-1"
+                            >
+                              {issueIdCard.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <CreditCard className="h-3 w-3" /> Issue ID
+                                  Card
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1212,6 +1281,346 @@ function DashboardTab() {
           </div>
         )}
       </motion.div>
+    </div>
+  );
+}
+
+// ─── Reviews Tab ─────────────────────────────────────────────────────────────
+
+import type { Review, ReviewInput } from "../backend.d";
+
+function StarDisplay({ rating }: { rating: number }) {
+  return (
+    <span className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span
+          key={s}
+          className={s <= rating ? "text-amber-400" : "text-gray-200"}
+        >
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ReviewFormFields({
+  value,
+  onChange,
+}: {
+  value: ReviewInput;
+  onChange: (v: ReviewInput) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label htmlFor="rv-name">Name</Label>
+        <Input
+          id="rv-name"
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          placeholder="Reviewer name"
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="rv-email">Email</Label>
+        <Input
+          id="rv-email"
+          type="email"
+          value={value.email}
+          onChange={(e) => onChange({ ...value, email: e.target.value })}
+          placeholder="email@example.com"
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor="rv-course">Course</Label>
+        <Input
+          id="rv-course"
+          value={value.course}
+          onChange={(e) => onChange({ ...value, course: e.target.value })}
+          placeholder="Course name"
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <Label>Rating</Label>
+        <div className="flex gap-1 mt-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onChange({ ...value, rating: BigInt(star) })}
+              className={`text-2xl transition-colors ${Number(value.rating) >= star ? "text-amber-400" : "text-gray-300"}`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <Label htmlFor="rv-feedback">Feedback</Label>
+        <Textarea
+          id="rv-feedback"
+          value={value.feedback}
+          onChange={(e) => onChange({ ...value, feedback: e.target.value })}
+          rows={3}
+          placeholder="Share the student's experience..."
+          className="mt-1 resize-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_REVIEW_INPUT: ReviewInput = {
+  name: "",
+  email: "",
+  course: "",
+  feedback: "",
+  rating: BigInt(5),
+};
+
+function ReviewsTab() {
+  const { data: reviews = [], isLoading } = useGetReviews();
+  const addReview = useAddReviewByAdmin();
+  const updateReview = useUpdateReview();
+  const deleteReview = useDeleteReview();
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<ReviewInput>(EMPTY_REVIEW_INPUT);
+  const [editReview, setEditReview] = useState<Review | null>(null);
+  const [editForm, setEditForm] = useState<ReviewInput>(EMPTY_REVIEW_INPUT);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const handleAdd = async () => {
+    if (!addForm.name || !addForm.email || !addForm.feedback) return;
+    await addReview.mutateAsync(addForm);
+    setAddOpen(false);
+    setAddForm(EMPTY_REVIEW_INPUT);
+  };
+
+  const handleEdit = async () => {
+    if (!editReview) return;
+    await updateReview.mutateAsync({ id: editReview.id, input: editForm });
+    setEditReview(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteReview.mutateAsync(deleteTarget);
+    setDeleteTarget(null);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-foreground">Reviews</h2>
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogTrigger asChild>
+            <Button
+              size="sm"
+              className="gap-2"
+              style={{ backgroundColor: BRAND_BLUE }}
+              data-ocid="admin.reviews.open_modal_button"
+            >
+              <Plus className="h-4 w-4" /> Add Review
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md" data-ocid="admin.reviews.dialog">
+            <DialogHeader>
+              <DialogTitle>Add Review</DialogTitle>
+            </DialogHeader>
+            <ReviewFormFields value={addForm} onChange={setAddForm} />
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setAddOpen(false)}
+                data-ocid="admin.reviews.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                style={{ backgroundColor: BRAND_BLUE }}
+                onClick={handleAdd}
+                disabled={addReview.isPending}
+                data-ocid="admin.reviews.confirm_button"
+              >
+                {addReview.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Add Review
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div data-ocid="admin.reviews.loading_state" className="space-y-3">
+          {SKELETON_KEYS.map((k) => (
+            <Skeleton key={k} className="h-12 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <div
+          data-ocid="admin.reviews.empty_state"
+          className="py-16 text-center"
+        >
+          <p className="text-muted-foreground">
+            No reviews yet. Add the first one!
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Email</TableHead>
+                <TableHead className="hidden md:table-cell">Course</TableHead>
+                <TableHead className="hidden lg:table-cell">Feedback</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reviews.map((r) => (
+                <TableRow key={r.id} data-ocid={"admin.reviews.row" as const}>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                    {r.email}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-sm">
+                    {r.course}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm max-w-48 truncate text-muted-foreground">
+                    {r.feedback}
+                  </TableCell>
+                  <TableCell>
+                    <StarDisplay rating={Number(r.rating)} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditReview(r);
+                          setEditForm({
+                            name: r.name,
+                            email: r.email,
+                            course: r.course,
+                            feedback: r.feedback,
+                            rating: r.rating,
+                          });
+                        }}
+                        data-ocid="admin.reviews.edit_button"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => setDeleteTarget(r.id)}
+                        data-ocid="admin.reviews.delete_button"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editReview}
+        onOpenChange={(v) => {
+          if (!v) setEditReview(null);
+        }}
+      >
+        <DialogContent
+          className="max-w-md"
+          data-ocid="admin.reviews.edit.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>Edit Review</DialogTitle>
+          </DialogHeader>
+          <ReviewFormFields value={editForm} onChange={setEditForm} />
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setEditReview(null)}
+              data-ocid="admin.reviews.edit.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              style={{ backgroundColor: BRAND_BLUE }}
+              onClick={handleEdit}
+              disabled={updateReview.isPending}
+              data-ocid="admin.reviews.edit.confirm_button"
+            >
+              {updateReview.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent
+          className="max-w-sm"
+          data-ocid="admin.reviews.delete.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>Delete Review</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            Are you sure you want to delete this review? This action cannot be
+            undone.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setDeleteTarget(null)}
+              data-ocid="admin.reviews.delete.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={handleDelete}
+              disabled={deleteReview.isPending}
+              data-ocid="admin.reviews.delete.confirm_button"
+            >
+              {deleteReview.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1247,6 +1656,7 @@ function AdminContent({ onLogout }: { onLogout: () => void }) {
               [
                 { id: "dashboard", label: "Dashboard", icon: BarChart3 },
                 { id: "courses", label: "Courses", icon: BookOpen },
+                { id: "reviews", label: "Reviews", icon: FileText },
                 { id: "settings", label: "Settings", icon: Settings },
               ] as {
                 id: AdminTab;
@@ -1304,6 +1714,7 @@ function AdminContent({ onLogout }: { onLogout: () => void }) {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === "dashboard" && <DashboardTab />}
         {activeTab === "courses" && <CoursesTab />}
+        {activeTab === "reviews" && <ReviewsTab />}
         {activeTab === "settings" && <SettingsTab onLogout={onLogout} />}
       </main>
     </div>

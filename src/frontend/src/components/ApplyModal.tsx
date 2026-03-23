@@ -44,6 +44,11 @@ interface ApplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preSelectedCourse?: string;
+  onApplicationSubmitted?: (
+    name: string,
+    email: string,
+    course: string,
+  ) => void;
 }
 
 interface ReceiptData {
@@ -82,29 +87,45 @@ function generateReceiptHTML(data: ReceiptData): string {
     }
     .receipt {
       background: #ffffff;
-      border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(11, 94, 215, 0.15);
-      max-width: 480px;
+      border-radius: 20px;
+      box-shadow: 0 12px 48px rgba(11, 94, 215, 0.18);
+      max-width: 520px;
       width: 100%;
       overflow: hidden;
+      border: 2px solid #dbeafe;
     }
     .receipt-header {
-      background: linear-gradient(135deg, #0B5ED7 0%, #1a6ee8 100%);
-      padding: 2rem 2rem 1.5rem;
+      background: linear-gradient(135deg, #0B2952 0%, #0B5ED7 100%);
+      padding: 2.25rem 2.5rem 1.75rem;
       text-align: center;
       color: white;
+      position: relative;
     }
-    .logo { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 0.25rem; }
+    .header-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #93c5fd;
+      margin-bottom: 0.75rem;
+    }
+    .logo { font-size: 2.25rem; font-weight: 800; letter-spacing: 0.1em; line-height: 1; margin-bottom: 0.35rem; color: white; }
     .logo span { color: #93c5fd; }
-    .receipt-title { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.12em; opacity: 0.85; }
-    .receipt-body { padding: 2rem; }
-    .field { margin-bottom: 1.25rem; }
-    .field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; margin-bottom: 0.25rem; }
-    .field-value { font-size: 1rem; font-weight: 600; color: #111827; }
-    .app-id { font-family: monospace; background: #eff6ff; padding: 4px 8px; border-radius: 6px; color: #0B5ED7; font-size: 1.05rem; }
-    .divider { border: none; border-top: 1px dashed #e5e7eb; margin: 1.5rem 0; }
-    .notice { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.875rem; font-weight: 700; color: #0B5ED7; text-align: center; line-height: 1.5; }
-    .receipt-footer { text-align: center; padding: 1.25rem 2rem; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #f3f4f6; }
+    .institute-name { font-size: 0.8rem; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: 0; }
+    .gold-divider { height: 3px; background: linear-gradient(90deg, transparent, #f59e0b, #fbbf24, #f59e0b, transparent); margin: 0; }
+    .receipt-body { padding: 2rem 2.5rem; }
+    .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 2rem; margin-bottom: 1.5rem; }
+    .field-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 0.3rem; font-weight: 600; }
+    .field-value { font-size: 0.95rem; font-weight: 700; color: #111827; }
+    .app-id-pill { font-family: 'Courier New', monospace; background: #eff6ff; border: 1px solid #bfdbfe; padding: 4px 10px; border-radius: 999px; color: #1d4ed8; font-size: 0.85rem; font-weight: 700; display: inline-block; }
+    .notice-box { border: 1.5px dashed #93c5fd; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .notice-text { font-size: 0.8rem; color: #1d4ed8; font-style: italic; line-height: 1.6; text-align: center; }
+    .receipt-footer { text-align: center; padding: 1rem 2.5rem 1.25rem; font-size: 0.7rem; color: #d1d5db; border-top: 1px solid #f3f4f6; letter-spacing: 0.04em; }
     @media print {
       body { background: white; padding: 0; }
       .receipt { box-shadow: none; max-width: 100%; border-radius: 0; }
@@ -114,18 +135,37 @@ function generateReceiptHTML(data: ReceiptData): string {
 <body>
   <div class="receipt">
     <div class="receipt-header">
+      <div class="header-badge">Official Document</div>
       <div class="logo">SKIL<span>TRIX</span></div>
-      <div class="receipt-title">Admission Receipt</div>
+      <div class="institute-name">SKILTRIX Institute of Technology</div>
     </div>
+    <div class="gold-divider"></div>
     <div class="receipt-body">
-      <div class="field"><div class="field-label">Student Name</div><div class="field-value">${data.name}</div></div>
-      <div class="field"><div class="field-label">Course / Program</div><div class="field-value">${data.course}</div></div>
-      <div class="field"><div class="field-label">Application ID</div><div class="field-value"><span class="app-id">${data.applicationId}</span></div></div>
-      <div class="field"><div class="field-label">Date of Application</div><div class="field-value">${data.date}</div></div>
-      <hr class="divider" />
-      <div class="notice">Bring this receipt to office for admission confirmation</div>
+      <div class="fields-grid">
+        <div class="field">
+          <div class="field-label">Student Name</div>
+          <div class="field-value">${data.name}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Course / Program</div>
+          <div class="field-value">${data.course}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Application ID</div>
+          <div class="field-value"><span class="app-id-pill">${data.applicationId}</span></div>
+        </div>
+        <div class="field">
+          <div class="field-label">Date of Application</div>
+          <div class="field-value">${data.date}</div>
+        </div>
+      </div>
+      <div class="notice-box">
+        <div class="notice-text">
+          ⚠️ Important: Keep this receipt safe. Bring it to the institute for admission verification.
+        </div>
+      </div>
     </div>
-    <div class="receipt-footer">SKILTRIX Institute &mdash; Official Admission Receipt</div>
+    <div class="receipt-footer">Official Document &mdash; SKILTRIX Institute of Technology</div>
   </div>
 </body>
 </html>`;
@@ -135,6 +175,7 @@ export function ApplyModal({
   open,
   onOpenChange,
   preSelectedCourse,
+  onApplicationSubmitted,
 }: ApplyModalProps) {
   const [form, setForm] = useState({
     name: "",
@@ -212,6 +253,7 @@ export function ApplyModal({
         certificateIssued: false,
       });
       setReceipt({ name: form.name, course: form.course, applicationId, date });
+      onApplicationSubmitted?.(form.name, form.email, form.course);
     } catch {
       // error shown via mutation.isError
     }
@@ -287,74 +329,98 @@ export function ApplyModal({
             <div className="flex flex-col items-center gap-2 py-2">
               <CheckCircle2
                 className="text-emerald-500"
-                style={{ width: 56, height: 56 }}
+                style={{ width: 52, height: 52 }}
               />
-              <p className="text-lg font-bold text-foreground">
+              <p className="text-base font-bold text-foreground">
                 Application Submitted Successfully!
-              </p>
-              <p className="text-sm text-muted-foreground text-center">
-                Your application ID is{" "}
-                <span className="font-mono font-semibold text-brand-blue bg-blue-50 px-2 py-0.5 rounded">
-                  {receipt.applicationId}
-                </span>
-                . Save it for tracking.
               </p>
             </div>
 
-            {/* Receipt card */}
-            <div className="rounded-2xl border border-border overflow-hidden shadow-md">
+            {/* Premium Receipt Card */}
+            <div className="border-2 border-blue-100 rounded-2xl overflow-hidden shadow-lg">
+              {/* Header */}
               <div
-                className="px-6 py-4 text-center text-white"
+                className="px-6 py-5 text-center text-white relative"
                 style={{
                   background:
-                    "linear-gradient(135deg, #0B5ED7 0%, #1a6ee8 100%)",
+                    "linear-gradient(135deg, #0B2952 0%, #0B5ED7 100%)",
                 }}
               >
-                <div className="text-xl font-extrabold tracking-widest">
-                  SKIL<span className="opacity-70">TRIX</span>
+                <div className="inline-block bg-white/15 border border-white/30 rounded-full px-3 py-0.5 text-[10px] font-bold tracking-[0.15em] uppercase text-blue-200 mb-2">
+                  Official Document
                 </div>
-                <div className="text-xs uppercase tracking-widest opacity-80 mt-0.5">
+                <div className="text-2xl font-extrabold tracking-widest text-white">
+                  SKIL<span className="text-blue-300">TRIX</span>
+                </div>
+                <div className="text-[11px] tracking-wide opacity-80 mt-0.5">
+                  SKILTRIX Institute of Technology
+                </div>
+                <div className="text-xs uppercase tracking-[0.15em] text-blue-200 mt-1 font-semibold">
                   Admission Receipt
                 </div>
               </div>
-              <div className="bg-card px-6 py-5 space-y-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Student Name
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {receipt.name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Course / Program
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {receipt.course}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Application ID
-                  </p>
-                  <p className="font-semibold font-mono text-brand-blue bg-blue-50 inline-block px-2 py-0.5 rounded text-sm">
-                    {receipt.applicationId}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Date of Application
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {receipt.date}
-                  </p>
-                </div>
-                <div className="pt-1">
-                  <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-center text-sm font-bold text-brand-blue leading-snug">
-                    Bring this receipt to office for admission confirmation
+
+              {/* Gold divider */}
+              <div
+                className="h-[3px]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, #f59e0b, #fbbf24, #f59e0b, transparent)",
+                }}
+              />
+
+              {/* Body */}
+              <div className="bg-white px-6 py-5">
+                {/* 2-col grid */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-5">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">
+                      Student Name
+                    </p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {receipt.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">
+                      Course / Program
+                    </p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {receipt.course}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">
+                      Application ID
+                    </p>
+                    <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full text-xs inline-block">
+                      {receipt.applicationId}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">
+                      Date of Application
+                    </p>
+                    <p className="font-bold text-gray-900 text-sm">
+                      {receipt.date}
+                    </p>
                   </div>
                 </div>
+
+                {/* Notice */}
+                <div className="border-2 border-dashed border-blue-200 rounded-xl px-4 py-3 mb-2">
+                  <p className="text-xs text-blue-700 italic text-center leading-relaxed">
+                    ⚠️ Important: Keep this receipt safe. Bring it to the
+                    institute for admission verification.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 border-t border-gray-100 px-6 py-2 text-center">
+                <p className="text-[10px] text-gray-400 tracking-wide">
+                  Official Document — SKILTRIX Institute of Technology
+                </p>
               </div>
             </div>
 

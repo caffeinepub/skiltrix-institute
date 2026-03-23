@@ -25,6 +25,10 @@ export interface Application {
   'course' : string,
 }
 export type ApplicationId = string;
+export interface ApplicationStageInfo {
+  'applicationId' : ApplicationId,
+  'stage' : string,
+}
 export interface ApplicationStatusInfo {
   'status' : Status,
   'applicationId' : ApplicationId,
@@ -42,6 +46,17 @@ export interface Course {
   'skills' : Array<string>,
   'careerOpportunities' : Array<string>,
 }
+export interface IdCardData {
+  'pin' : string,
+  'applicationId' : ApplicationId,
+  'name' : string,
+  'registrationNumber' : string,
+  'email' : string,
+  'issuedDate' : string,
+  'phone' : string,
+  'rollNo' : string,
+  'course' : string,
+}
 export interface Inquiry {
   'name' : string,
   'email' : string,
@@ -50,6 +65,22 @@ export interface Inquiry {
 }
 export type PaymentStatus = { 'paid' : null } |
   { 'unpaid' : null };
+export interface Review {
+  'id' : string,
+  'name' : string,
+  'createdAt' : bigint,
+  'feedback' : string,
+  'email' : string,
+  'rating' : bigint,
+  'course' : string,
+}
+export interface ReviewInput {
+  'name' : string,
+  'feedback' : string,
+  'email' : string,
+  'rating' : bigint,
+  'course' : string,
+}
 export interface ShoppingItem {
   'productName' : string,
   'currency' : string,
@@ -68,6 +99,7 @@ export type StripeSessionStatus = {
     'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
   } |
   { 'failed' : { 'error' : string } };
+export interface SubAdminInfo { 'name' : string, 'email' : string }
 export interface TransformationInput {
   'context' : Uint8Array,
   'response' : http_request_result,
@@ -90,6 +122,11 @@ export interface http_request_result {
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addCourse' : ActorMethod<[Course], undefined>,
+  'addReviewByAdmin' : ActorMethod<
+    [ReviewInput],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'approveApplication' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createCheckoutSession' : ActorMethod<
@@ -97,11 +134,15 @@ export interface _SERVICE {
     string
   >,
   'createDefaultCheckoutSession' : ActorMethod<[string, string], string>,
+  'createSubAdmin' : ActorMethod<[string, string, string, string], undefined>,
   'deleteCourse' : ActorMethod<[string], undefined>,
+  'deleteReview' : ActorMethod<[string], undefined>,
+  'deleteSubAdmin' : ActorMethod<[string], undefined>,
   'getAllApplications' : ActorMethod<[], Array<Application>>,
   'getAllInquiries' : ActorMethod<[], Array<Inquiry>>,
   'getAnalytics' : ActorMethod<[], Analytics>,
   'getApplicationByEmail' : ActorMethod<[string], [] | [Application]>,
+  'getApplicationStages' : ActorMethod<[], Array<ApplicationStageInfo>>,
   'getApplicationStatus' : ActorMethod<
     [ApplicationId],
     [] | [ApplicationStatusInfo]
@@ -109,22 +150,37 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCourses' : ActorMethod<[], Array<Course>>,
+  'getIdCard' : ActorMethod<[ApplicationId], [] | [IdCardData]>,
+  'getIdCardByEmail' : ActorMethod<[string], [] | [IdCardData]>,
+  'getReviews' : ActorMethod<[], Array<Review>>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
+  'getSubAdmins' : ActorMethod<[], Array<SubAdminInfo>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCertificateIssued' : ActorMethod<[string], boolean>,
   'isStripeConfigured' : ActorMethod<[], boolean>,
   'issueCertificate' : ActorMethod<[string], undefined>,
+  'issueIdCard' : ActorMethod<[ApplicationId], boolean>,
   'recordVisit' : ActorMethod<[], undefined>,
   'rejectApplication' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'setAdminCredentials' : ActorMethod<[string, string, string], undefined>,
+  'setAdminCredentials' : ActorMethod<
+    [string, string, string, string, string],
+    boolean
+  >,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'submitApplication' : ActorMethod<[Application], ApplicationId>,
   'submitInquiry' : ActorMethod<[string, string, string, string], undefined>,
+  'submitReview' : ActorMethod<
+    [ReviewInput],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateApplicationStage' : ActorMethod<[ApplicationId, string], undefined>,
   'updateCourse' : ActorMethod<[Course], undefined>,
   'updatePaymentStatus' : ActorMethod<[string, string, boolean], undefined>,
+  'updateReview' : ActorMethod<[string, ReviewInput], boolean>,
   'verifyAdminCredentials' : ActorMethod<[string, string, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;

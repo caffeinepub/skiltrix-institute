@@ -32,10 +32,10 @@ export function Footer() {
 
   return (
     <footer id="footer" className="bg-navy text-white/80">
-      <div className="container mx-auto px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
           {/* Brand */}
-          <div>
+          <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-brand-blue flex items-center justify-center">
                 <span className="text-white font-bold text-sm">SK</span>
@@ -56,7 +56,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-blue transition-colors"
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-blue transition-colors"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -103,11 +103,11 @@ export function Footer() {
             <h4 className="font-bold text-white mb-4">Contact Us</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex gap-2">
-                <span className="text-brand-blue mt-0.5">📍</span>
+                <span className="text-brand-blue mt-0.5 shrink-0">📍</span>
                 <span>Sector 10, Malviya Nagar, Jaipur, Rajasthan 302017</span>
               </li>
               <li className="flex gap-2">
-                <span className="text-brand-blue mt-0.5">📞</span>
+                <span className="text-brand-blue mt-0.5 shrink-0">📞</span>
                 <a
                   href="tel:+917023628763"
                   className="hover:text-brand-blue transition-colors"
@@ -116,16 +116,16 @@ export function Footer() {
                 </a>
               </li>
               <li className="flex gap-2">
-                <span className="text-brand-blue mt-0.5">✉️</span>
+                <span className="text-brand-blue mt-0.5 shrink-0">✉️</span>
                 <a
                   href="mailto:skiltrixsupport@gmail.com"
-                  className="hover:text-brand-blue transition-colors"
+                  className="hover:text-brand-blue transition-colors break-all"
                 >
                   skiltrixsupport@gmail.com
                 </a>
               </li>
               <li className="flex gap-2">
-                <span className="text-brand-blue mt-0.5">🕐</span>
+                <span className="text-brand-blue mt-0.5 shrink-0">🕐</span>
                 <span>Mon–Sat: 9:00 AM – 6:00 PM</span>
               </li>
             </ul>
@@ -134,7 +134,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="container mx-auto px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
           <span>© {year} SKILTRIX Institute. All rights reserved.</span>
           <span>
             Built with ❤️ using{" "}

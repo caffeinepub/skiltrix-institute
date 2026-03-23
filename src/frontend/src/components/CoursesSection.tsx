@@ -14,282 +14,167 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import type { Course } from "../backend.d";
 
-const SAMPLE_COURSES: Course[] = [
-  {
-    title: "Web Development",
-    description:
-      "Master full-stack development with React, Node.js, and cloud deployment. Build real-world projects from scratch.",
-    duration: "6 Months",
-    icon: "code",
-    category: "Technology",
-    fees: "₹25,000",
-    skills: ["HTML/CSS", "JavaScript", "React", "Node.js", "MongoDB", "Git"],
-    careerOpportunities: [
-      "Frontend Developer",
-      "Full Stack Developer",
-      "Web Engineer",
-      "Software Engineer",
-    ],
-  },
-  {
-    title: "Data Science",
-    description:
-      "Unlock insights from data with Python, ML algorithms, and visualization. Become a decision-maker with data.",
-    duration: "8 Months",
-    icon: "chart",
-    category: "Technology",
-    fees: "₹30,000",
-    skills: [
-      "Python",
-      "Pandas",
-      "NumPy",
-      "Machine Learning",
-      "SQL",
-      "Data Visualization",
-    ],
-    careerOpportunities: [
-      "Data Analyst",
-      "Data Scientist",
-      "ML Engineer",
-      "Business Analyst",
-    ],
-  },
-  {
-    title: "Digital Marketing",
-    description:
-      "Drive growth with SEO, paid ads, social media, and analytics strategies. Reach the right audience at scale.",
-    duration: "4 Months",
-    icon: "megaphone",
-    category: "Marketing",
-    fees: "₹15,000",
-    skills: [
-      "SEO/SEM",
-      "Google Ads",
-      "Social Media Marketing",
-      "Email Marketing",
-      "Analytics",
-      "Content Strategy",
-    ],
-    careerOpportunities: [
-      "Digital Marketer",
-      "SEO Specialist",
-      "Social Media Manager",
-      "Growth Hacker",
-    ],
-  },
-  {
-    title: "UI/UX Design",
-    description:
-      "Craft beautiful, user-centered experiences with Figma and design systems. Turn ideas into intuitive products.",
-    duration: "5 Months",
-    icon: "palette",
-    category: "Design",
-    fees: "₹20,000",
-    skills: [
-      "Figma",
-      "Wireframing",
-      "Prototyping",
-      "User Research",
-      "Design Systems",
-      "Accessibility",
-    ],
-    careerOpportunities: [
-      "UI Designer",
-      "UX Designer",
-      "Product Designer",
-      "Interaction Designer",
-    ],
-  },
-  {
-    title: "Business Analytics",
-    description:
-      "Transform business data into strategic decisions using BI tools and statistical techniques.",
-    duration: "4 Months",
-    icon: "trend",
-    category: "Business",
-    fees: "₹22,000",
-    skills: [
-      "Excel",
-      "Power BI",
-      "SQL",
-      "Data Storytelling",
-      "Statistics",
-      "Tableau",
-    ],
-    careerOpportunities: [
-      "Business Analyst",
-      "Data Analyst",
-      "Strategy Consultant",
-      "Operations Analyst",
-    ],
-  },
-  {
-    title: "Cybersecurity",
-    description:
-      "Protect systems and networks with ethical hacking and security protocols. Defend against modern threats.",
-    duration: "7 Months",
-    icon: "shield",
-    category: "Technology",
-    fees: "₹35,000",
-    skills: [
-      "Network Security",
-      "Ethical Hacking",
-      "Penetration Testing",
-      "SIEM Tools",
-      "Cryptography",
-      "Incident Response",
-    ],
-    careerOpportunities: [
-      "Security Analyst",
-      "Ethical Hacker",
-      "Security Engineer",
-      "SOC Analyst",
-    ],
-  },
-];
+const COURSE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  code: Code2,
+  chart: BarChart2,
+  megaphone: Megaphone,
+  palette: Palette,
+  trend: TrendingUp,
+  shield: ShieldCheck,
+};
 
-const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3", "sk-4"];
-
-function getCourseIcon(icon: string) {
-  switch (icon) {
-    case "code":
-      return Code2;
-    case "chart":
-      return BarChart2;
-    case "megaphone":
-      return Megaphone;
-    case "palette":
-      return Palette;
-    case "trend":
-      return TrendingUp;
-    case "shield":
-      return ShieldCheck;
-    default:
-      return Code2;
-  }
-}
+const COURSE_COLORS: Record<string, string> = {
+  Technology: "bg-blue-50 text-blue-700",
+  Marketing: "bg-orange-50 text-orange-700",
+  Design: "bg-purple-50 text-purple-700",
+  Business: "bg-green-50 text-green-700",
+  Security: "bg-red-50 text-red-700",
+};
 
 function CourseCard({
   course,
-  index,
   onViewDetails,
+  onApply,
+  index,
 }: {
   course: Course;
-  index: number;
   onViewDetails: (course: Course) => void;
+  onApply: (title: string) => void;
+  index: number;
 }) {
-  const Icon = getCourseIcon(course.icon);
+  const Icon = COURSE_ICONS[course.icon] ?? Code2;
+  const colorClass =
+    COURSE_COLORS[course.category] ?? "bg-blue-50 text-blue-700";
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.08, ease: "easeOut" }}
-      data-ocid={`courses.item.${index + 1}`}
-      className="bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 p-6 flex flex-col group cursor-pointer"
+      transition={{ duration: 0.45, delay: Math.min(index * 0.08, 0.4) }}
+      data-ocid={
+        `courses.item.${index + 1}` as `courses.item.${1 | 2 | 3 | 4 | 5 | 6}`
+      }
+      className="group relative bg-white rounded-2xl border border-border shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col overflow-hidden"
     >
-      <div className="w-12 h-12 rounded-xl bg-brand-blue/10 flex items-center justify-center mb-4 group-hover:bg-brand-blue/20 transition-colors">
-        <Icon className="w-6 h-6 text-brand-blue" />
-      </div>
-      <div className="flex-1">
-        <h3 className="text-base font-bold text-foreground mb-2">
+      <div className="p-6 flex flex-col flex-1">
+        <div className="flex items-start justify-between mb-4">
+          <div className="w-12 h-12 rounded-xl bg-brand-blue/10 flex items-center justify-center">
+            <Icon className="w-6 h-6 text-brand-blue" />
+          </div>
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorClass}`}
+          >
+            {course.category}
+          </span>
+        </div>
+
+        <h3 className="text-lg font-bold text-foreground mb-2">
           {course.title}
         </h3>
-        <p className="text-muted-foreground text-sm leading-relaxed mb-4 line-clamp-3">
+        <p className="text-muted-foreground text-sm leading-relaxed flex-1 mb-4 line-clamp-3">
           {course.description}
         </p>
-      </div>
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="w-3.5 h-3.5" />
-          {course.duration}
-        </span>
-        <button
-          type="button"
-          onClick={() => onViewDetails(course)}
-          data-ocid={`courses.item.${index + 1}.button`}
-          className="flex items-center gap-1.5 text-sm font-semibold text-brand-blue hover:gap-2.5 transition-all bg-brand-blue/5 hover:bg-brand-blue/10 px-3 py-1.5 rounded-full"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          View Details
-        </button>
+
+        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-5">
+          <span className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" />
+            {course.duration}
+          </span>
+          <span className="font-semibold text-brand-blue">{course.fees}</span>
+        </div>
+
+        <div className="flex gap-2 mt-auto">
+          <button
+            type="button"
+            onClick={() => onViewDetails(course)}
+            data-ocid="courses.secondary_button"
+            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-brand-blue/30 text-brand-blue text-sm font-semibold hover:bg-brand-blue/5 transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            View Details
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply(course.title)}
+            data-ocid="courses.primary_button"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-brand-blue text-white text-sm font-semibold hover:bg-[oklch(0.52_0.19_252)] transition-colors"
+          >
+            Apply Now
+          </button>
+        </div>
       </div>
     </motion.div>
   );
 }
 
-interface CoursesSectionProps {
-  onApplyClick?: (course?: string) => void;
-}
-
-export function CoursesSection({ onApplyClick }: CoursesSectionProps) {
-  const { data: backendCourses, isLoading } = useGetCourses();
-  const courses =
-    backendCourses && backendCourses.length > 0
-      ? backendCourses
-      : SAMPLE_COURSES;
-
+export function CoursesSection({
+  onApplyClick,
+}: {
+  onApplyClick: (course?: string) => void;
+}) {
+  const { data: backendCourses } = useGetCourses();
+  const courses = backendCourses ?? [];
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-
-  const handleViewDetails = (course: Course) => {
-    setSelectedCourse(course);
-    setDetailOpen(true);
-  };
-
-  const handleApply = (courseTitle: string) => {
-    if (onApplyClick) onApplyClick(courseTitle);
-  };
 
   return (
-    <section id="courses" className="py-24 bg-section-bg">
-      <div className="container mx-auto px-6 lg:px-8">
+    <section id="courses" className="py-20 bg-white">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Heading */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-14"
+          transition={{ duration: 0.55 }}
+          className="mb-12 text-center"
         >
-          <span className="text-brand-blue font-semibold text-sm tracking-widest uppercase">
-            What We Offer
+          <span className="mb-3 inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-semibold uppercase tracking-widest text-primary">
+            Our Programs
           </span>
-          <h2 className="text-4xl font-extrabold text-foreground mt-2">
-            Our Courses
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            Explore Our Courses
           </h2>
-          <p className="text-muted-foreground text-lg mt-3 max-w-xl mx-auto">
-            Industry-aligned programs taught by world-class instructors to
-            fast-track your career.
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
+            Industry-aligned programs built to launch and accelerate your
+            career.
           </p>
         </motion.div>
 
-        {isLoading ? (
-          <div
-            data-ocid="courses.loading_state"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        {/* Empty state */}
+        {courses.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            data-ocid="courses.empty_state"
+            className="flex flex-col items-center justify-center py-20 text-center"
           >
-            {SKELETON_KEYS.map((key) => (
-              <div
-                key={key}
-                className="bg-white rounded-2xl shadow-card p-6 animate-pulse"
-              >
-                <div className="w-12 h-12 rounded-xl bg-muted mb-4" />
-                <div className="h-4 bg-muted rounded mb-2" />
-                <div className="h-3 bg-muted rounded w-4/5" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            data-ocid="courses.list"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          >
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-blue/10">
+              <Clock className="h-8 w-8 text-brand-blue" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">
+              Courses Coming Soon!
+            </h3>
+            <p className="mt-2 max-w-sm text-muted-foreground">
+              We&apos;re adding exciting programs. Check back shortly or contact
+              us to learn more.
+            </p>
+          </motion.div>
+        )}
+
+        {/* Grid */}
+        {courses.length > 0 && (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map((course, i) => (
               <CourseCard
                 key={course.title}
                 course={course}
                 index={i}
-                onViewDetails={handleViewDetails}
+                onViewDetails={setSelectedCourse}
+                onApply={(title) => onApplyClick(title)}
               />
             ))}
           </div>
@@ -298,9 +183,12 @@ export function CoursesSection({ onApplyClick }: CoursesSectionProps) {
 
       <CourseDetailModal
         course={selectedCourse}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        onApply={handleApply}
+        open={selectedCourse !== null}
+        onClose={() => setSelectedCourse(null)}
+        onApply={(title) => {
+          setSelectedCourse(null);
+          onApplyClick(title);
+        }}
       />
     </section>
   );

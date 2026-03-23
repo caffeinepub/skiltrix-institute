@@ -4,6 +4,8 @@ import type {
   Application,
   ApplicationStageInfo,
   Course,
+  Review,
+  ReviewInput,
   SubAdminInfo,
 } from "../backend.d";
 import { useActor } from "./useActor";
@@ -255,11 +257,6 @@ export function useVerifyAdminCredentials() {
   });
 }
 
-/**
- * Sets new admin credentials.
- * First verifies old credentials, then calls setAdminCredentials(newEmail, newPassword, newMpin).
- * Returns true on success.
- */
 export function useSetAdminCredentials() {
   const { actor } = useActor();
   return useMutation({
@@ -271,7 +268,6 @@ export function useSetAdminCredentials() {
       newMpin: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      // Retrieve current email from session for verification
       const currentEmail = sessionStorage.getItem("adminEmail") ?? "";
       const valid = await actor.verifyAdminCredentials(
         currentEmail,
@@ -280,6 +276,8 @@ export function useSetAdminCredentials() {
       );
       if (!valid) return false;
       await actor.setAdminCredentials(
+        data.oldPassword,
+        data.oldMpin,
         data.newEmail,
         data.newPassword,
         data.newMpin,
@@ -395,6 +393,100 @@ export function useSubmitInquiry() {
         data.phone,
         data.message,
       );
+    },
+  });
+}
+
+// ─── ID Card ─────────────────────────────────────────────────────────────────
+export function useIssueIdCard() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicationId: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.issueIdCard(applicationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allApplications"] });
+    },
+  });
+}
+
+export function useGetIdCardByEmail() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (email: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getIdCardByEmail(email);
+    },
+  });
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+export function useGetReviews() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Review[]>({
+    queryKey: ["reviews"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getReviews();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSubmitReview() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReviewInput) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.submitReview(input);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    },
+  });
+}
+
+export function useAddReviewByAdmin() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReviewInput) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.addReviewByAdmin(input);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    },
+  });
+}
+
+export function useUpdateReview() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: ReviewInput }) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.updateReview(id, input);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
+    },
+  });
+}
+
+export function useDeleteReview() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.deleteReview(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
     },
   });
 }
