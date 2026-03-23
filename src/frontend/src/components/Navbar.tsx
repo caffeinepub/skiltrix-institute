@@ -28,6 +28,12 @@ export function Navbar({ onApplyClick }: NavbarProps) {
   const goToAdmin = () => {
     window.location.hash = "admin";
   };
+  const goToDashboard = () => {
+    window.location.hash = "dashboard";
+  };
+  const goToTrack = () => {
+    window.location.hash = "track";
+  };
 
   return (
     <header
@@ -64,7 +70,23 @@ export function Navbar({ onApplyClick }: NavbarProps) {
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={goToTrack}
+              data-ocid="nav.link"
+              className="text-xs font-medium text-muted-foreground hover:text-brand-blue transition-colors px-2 py-1 rounded border border-transparent hover:border-brand-blue/30"
+            >
+              Track Application
+            </button>
+            <button
+              type="button"
+              onClick={goToDashboard}
+              data-ocid="nav.link"
+              className="text-xs font-medium text-muted-foreground hover:text-brand-blue transition-colors px-2 py-1 rounded border border-transparent hover:border-brand-blue/30"
+            >
+              Dashboard
+            </button>
             <button
               type="button"
               onClick={goToAdmin}
@@ -113,6 +135,28 @@ export function Navbar({ onApplyClick }: NavbarProps) {
                 {link.label}
               </a>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                goToTrack();
+                setMobileOpen(false);
+              }}
+              data-ocid="nav.link"
+              className="block w-full text-left py-3 text-sm font-medium text-muted-foreground hover:text-brand-blue border-b border-border/50"
+            >
+              Track Application
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                goToDashboard();
+                setMobileOpen(false);
+              }}
+              data-ocid="nav.link"
+              className="block w-full text-left py-3 text-sm font-medium text-muted-foreground hover:text-brand-blue border-b border-border/50"
+            >
+              Student Dashboard
+            </button>
             <button
               type="button"
               onClick={() => {

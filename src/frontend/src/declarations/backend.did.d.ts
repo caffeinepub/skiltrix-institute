@@ -12,20 +12,27 @@ import type { Principal } from '@icp-sdk/core/principal';
 
 export interface Application {
   'status' : Status,
-  'applicationId' : string,
+  'paymentStatus' : PaymentStatus,
+  'applicationId' : ApplicationId,
   'date' : string,
   'name' : string,
   'email' : string,
   'address' : string,
+  'stripePaymentId' : [] | [string],
   'phone' : string,
+  'certificateIssued' : boolean,
   'course' : string,
 }
+export type ApplicationId = string;
 export interface Course {
   'title' : string,
   'duration' : string,
+  'fees' : string,
   'icon' : string,
   'description' : string,
   'category' : string,
+  'skills' : Array<string>,
+  'careerOpportunities' : Array<string>,
 }
 export interface Inquiry {
   'name' : string,
@@ -33,34 +40,76 @@ export interface Inquiry {
   'message' : string,
   'phone' : string,
 }
+export type PaymentStatus = { 'paid' : null } |
+  { 'unpaid' : null };
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
 export type Status = { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addCourse' : ActorMethod<[Course], undefined>,
   'approveApplication' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
+  'createDefaultCheckoutSession' : ActorMethod<[string, string], string>,
+  'deleteCourse' : ActorMethod<[string], undefined>,
   'getAllApplications' : ActorMethod<[], Array<Application>>,
-  'getAllApplicationsByStatus' : ActorMethod<[Status], Array<Application>>,
-  'getAllCourses' : ActorMethod<[], Array<Course>>,
   'getAllInquiries' : ActorMethod<[], Array<Inquiry>>,
-  'getApplicationStatus' : ActorMethod<[string], Status>,
+  'getApplicationByEmail' : ActorMethod<[string], [] | [Application]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCourse' : ActorMethod<[string], Course>,
+  'getCourses' : ActorMethod<[], Array<Course>>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCertificateIssued' : ActorMethod<[string], boolean>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
+  'issueCertificate' : ActorMethod<[string], undefined>,
   'rejectApplication' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'submitApplication' : ActorMethod<
-    [string, string, string, string, string, string, string],
-    undefined
-  >,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'submitApplication' : ActorMethod<[Application], ApplicationId>,
   'submitInquiry' : ActorMethod<[string, string, string, string], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateCourse' : ActorMethod<[Course], undefined>,
+  'updatePaymentStatus' : ActorMethod<[string, string, boolean], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

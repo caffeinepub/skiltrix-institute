@@ -15,12 +15,15 @@ import {
   useApproveApplication,
   useGetAllApplications,
   useIsCallerAdmin,
+  useIssueCertificate,
   useRejectApplication,
 } from "@/hooks/useQueries";
 import {
   ArrowLeft,
+  Award,
   CheckCircle2,
   Clock,
+  CreditCard,
   Loader2,
   Lock,
   ShieldCheck,
@@ -30,7 +33,7 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { Application } from "../backend.d";
-import { Status } from "../backend.d";
+import { PaymentStatus, Status } from "../backend.d";
 
 type FilterTab = "all" | Status;
 
@@ -54,6 +57,21 @@ function StatusBadge({ status }: { status: Status }) {
   return (
     <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
       <Clock className="h-3 w-3 mr-1" /> Pending
+    </Badge>
+  );
+}
+
+function PaymentBadge({ status }: { status: PaymentStatus }) {
+  if (status === PaymentStatus.paid) {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+        <CheckCircle2 className="h-3 w-3 mr-1" /> Paid
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-100">
+      <CreditCard className="h-3 w-3 mr-1" /> Unpaid
     </Badge>
   );
 }
@@ -87,7 +105,13 @@ function StatCard({
 function ApplicationRow({ app, index }: { app: Application; index: number }) {
   const approve = useApproveApplication();
   const reject = useRejectApplication();
-  const isActing = approve.isPending || reject.isPending;
+  const issueCert = useIssueCertificate();
+  const isActing = approve.isPending || reject.isPending || issueCert.isPending;
+
+  const canIssueCert =
+    app.status === Status.approved &&
+    app.paymentStatus === PaymentStatus.paid &&
+    !app.certificateIssued;
 
   return (
     <TableRow data-ocid={`admin.item.${index}`}>
@@ -106,7 +130,10 @@ function ApplicationRow({ app, index }: { app: Application; index: number }) {
         <StatusBadge status={app.status} />
       </TableCell>
       <TableCell>
-        <div className="flex gap-2">
+        <PaymentBadge status={app.paymentStatus} />
+      </TableCell>
+      <TableCell>
+        <div className="flex gap-2 flex-wrap">
           <Button
             size="sm"
             disabled={app.status === Status.approved || isActing}
@@ -134,6 +161,28 @@ function ApplicationRow({ app, index }: { app: Application; index: number }) {
               "Reject"
             )}
           </Button>
+          {canIssueCert && (
+            <Button
+              size="sm"
+              disabled={isActing}
+              onClick={() => issueCert.mutate(app.applicationId)}
+              data-ocid={`admin.secondary_button.${index}`}
+              className="bg-amber-500 hover:bg-amber-600 text-white h-7 px-3 text-xs rounded-full disabled:opacity-40 gap-1"
+            >
+              {issueCert.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <>
+                  <Award className="h-3 w-3" /> Issue Cert
+                </>
+              )}
+            </Button>
+          )}
+          {app.certificateIssued && (
+            <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs px-2 h-7 flex items-center gap-1">
+              <Award className="h-3 w-3" /> Cert Issued
+            </Badge>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -294,6 +343,7 @@ function AdminContent() {
                     <TableHead className="font-semibold">Course</TableHead>
                     <TableHead className="font-semibold">Date</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Payment</TableHead>
                     <TableHead className="font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -16,9 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useSubmitApplication } from "@/hooks/useQueries";
-import { Download, Loader2, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import {
+  useCreateCheckoutSession,
+  useIsStripeConfigured,
+  useSubmitApplication,
+} from "@/hooks/useQueries";
+import { CreditCard, Download, Loader2, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const PROGRAMS = [
   "Web Development",
@@ -32,6 +36,7 @@ const PROGRAMS = [
 interface ApplyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preSelectedCourse?: string;
 }
 
 interface ReceiptData {
@@ -107,12 +112,16 @@ function generateReceiptHTML(data: ReceiptData): string {
 </html>`;
 }
 
-export function ApplyModal({ open, onOpenChange }: ApplyModalProps) {
+export function ApplyModal({
+  open,
+  onOpenChange,
+  preSelectedCourse,
+}: ApplyModalProps) {
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
-    course: "",
+    course: preSelectedCourse ?? "",
     address: "",
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -120,6 +129,15 @@ export function ApplyModal({ open, onOpenChange }: ApplyModalProps) {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mutation = useSubmitApplication();
+  const createSession = useCreateCheckoutSession();
+  const { data: stripeConfigured } = useIsStripeConfigured();
+
+  // When modal opens with a pre-selected course, apply it
+  useEffect(() => {
+    if (open && preSelectedCourse) {
+      setForm((prev) => ({ ...prev, course: preSelectedCourse }));
+    }
+  }, [open, preSelectedCourse]);
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -162,6 +180,21 @@ export function ApplyModal({ open, onOpenChange }: ApplyModalProps) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handlePayNow = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const hash = "#dashboard";
+    const successUrl = `${baseUrl}?payment_success=true&session_id={CHECKOUT_SESSION_ID}${hash}`;
+    const cancelUrl = `${baseUrl}${hash}`;
+    createSession.mutate(
+      { successUrl, cancelUrl },
+      {
+        onSuccess: (url) => {
+          window.location.href = url;
+        },
+      },
+    );
   };
 
   const handleClose = (val: boolean) => {
@@ -246,7 +279,8 @@ export function ApplyModal({ open, onOpenChange }: ApplyModalProps) {
                 </div>
               </div>
             </div>
-            <div className="flex gap-3">
+
+            <div className="flex gap-3 flex-wrap">
               <Button
                 variant="outline"
                 onClick={() => handleClose(false)}
@@ -263,6 +297,22 @@ export function ApplyModal({ open, onOpenChange }: ApplyModalProps) {
                 <Download className="mr-2 h-4 w-4" /> Download Receipt
               </Button>
             </div>
+
+            {stripeConfigured && (
+              <Button
+                onClick={handlePayNow}
+                disabled={createSession.isPending}
+                data-ocid="apply.secondary_button"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-semibold gap-2"
+              >
+                {createSession.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                Pay Registration Fee Now
+              </Button>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-2">

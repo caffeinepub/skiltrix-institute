@@ -8,7 +8,7 @@ export function useGetCourses() {
     queryKey: ["courses"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllCourses();
+      return actor.getCourses();
     },
     enabled: !!actor && !isFetching,
   });
@@ -47,15 +47,7 @@ export function useSubmitApplication() {
       date: string;
     }) => {
       if (!actor) throw new Error("Actor not available");
-      return actor.submitApplication(
-        data.applicationId,
-        data.name,
-        data.email,
-        data.phone,
-        data.course,
-        data.address,
-        data.date,
-      );
+      return actor.submitApplication(data as any);
     },
   });
 }
@@ -108,6 +100,83 @@ export function useRejectApplication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allApplications"] });
+    },
+  });
+}
+
+export function useGetApplicationByEmail() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (email: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getApplicationByEmail(email);
+    },
+  });
+}
+
+export function useIssueCertificate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicationId: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.issueCertificate(applicationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allApplications"] });
+    },
+  });
+}
+
+export function useUpdatePaymentStatus() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (data: {
+      applicationId: string;
+      sessionId: string;
+      isPaid: boolean;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.updatePaymentStatus(
+        data.applicationId,
+        data.sessionId,
+        data.isPaid,
+      );
+    },
+  });
+}
+
+export function useCreateCheckoutSession() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (data: { successUrl: string; cancelUrl: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.createDefaultCheckoutSession(
+        data.successUrl,
+        data.cancelUrl,
+      );
+    },
+  });
+}
+
+export function useIsStripeConfigured() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isStripeConfigured"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isStripeConfigured();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetStripeSessionStatus() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getStripeSessionStatus(sessionId);
     },
   });
 }

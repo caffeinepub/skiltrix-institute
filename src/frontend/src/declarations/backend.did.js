@@ -8,32 +8,50 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const Course = IDL.Record({
+  'title' : IDL.Text,
+  'duration' : IDL.Text,
+  'fees' : IDL.Text,
+  'icon' : IDL.Text,
+  'description' : IDL.Text,
+  'category' : IDL.Text,
+  'skills' : IDL.Vec(IDL.Text),
+  'careerOpportunities' : IDL.Vec(IDL.Text),
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const ShoppingItem = IDL.Record({
+  'productName' : IDL.Text,
+  'currency' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'priceInCents' : IDL.Nat,
+  'productDescription' : IDL.Text,
 });
 export const Status = IDL.Variant({
   'pending' : IDL.Null,
   'approved' : IDL.Null,
   'rejected' : IDL.Null,
 });
+export const PaymentStatus = IDL.Variant({
+  'paid' : IDL.Null,
+  'unpaid' : IDL.Null,
+});
+export const ApplicationId = IDL.Text;
 export const Application = IDL.Record({
   'status' : Status,
-  'applicationId' : IDL.Text,
+  'paymentStatus' : PaymentStatus,
+  'applicationId' : ApplicationId,
   'date' : IDL.Text,
   'name' : IDL.Text,
   'email' : IDL.Text,
   'address' : IDL.Text,
+  'stripePaymentId' : IDL.Opt(IDL.Text),
   'phone' : IDL.Text,
+  'certificateIssued' : IDL.Bool,
   'course' : IDL.Text,
-});
-export const Course = IDL.Record({
-  'title' : IDL.Text,
-  'duration' : IDL.Text,
-  'icon' : IDL.Text,
-  'description' : IDL.Text,
-  'category' : IDL.Text,
 });
 export const Inquiry = IDL.Record({
   'name' : IDL.Text,
@@ -42,68 +60,130 @@ export const Inquiry = IDL.Record({
   'phone' : IDL.Text,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const StripeSessionStatus = IDL.Variant({
+  'completed' : IDL.Record({
+    'userPrincipal' : IDL.Opt(IDL.Text),
+    'response' : IDL.Text,
+  }),
+  'failed' : IDL.Record({ 'error' : IDL.Text }),
+});
+export const StripeConfiguration = IDL.Record({
+  'allowedCountries' : IDL.Vec(IDL.Text),
+  'secretKey' : IDL.Text,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addCourse' : IDL.Func([Course], [], []),
   'approveApplication' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createCheckoutSession' : IDL.Func(
+      [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
+  'createDefaultCheckoutSession' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
+  'deleteCourse' : IDL.Func([IDL.Text], [], []),
   'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
-  'getAllApplicationsByStatus' : IDL.Func(
-      [Status],
-      [IDL.Vec(Application)],
+  'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
+  'getApplicationByEmail' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(Application)],
       ['query'],
     ),
-  'getAllCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
-  'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
-  'getApplicationStatus' : IDL.Func([IDL.Text], [Status], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCourse' : IDL.Func([IDL.Text], [Course], ['query']),
+  'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+  'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'issueCertificate' : IDL.Func([IDL.Text], [], []),
   'rejectApplication' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'submitApplication' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-      [],
-      [],
-    ),
+  'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'submitApplication' : IDL.Func([Application], [ApplicationId], []),
   'submitInquiry' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text], [], []),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
+  'updateCourse' : IDL.Func([Course], [], []),
+  'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const Course = IDL.Record({
+    'title' : IDL.Text,
+    'duration' : IDL.Text,
+    'fees' : IDL.Text,
+    'icon' : IDL.Text,
+    'description' : IDL.Text,
+    'category' : IDL.Text,
+    'skills' : IDL.Vec(IDL.Text),
+    'careerOpportunities' : IDL.Vec(IDL.Text),
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const ShoppingItem = IDL.Record({
+    'productName' : IDL.Text,
+    'currency' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'priceInCents' : IDL.Nat,
+    'productDescription' : IDL.Text,
   });
   const Status = IDL.Variant({
     'pending' : IDL.Null,
     'approved' : IDL.Null,
     'rejected' : IDL.Null,
   });
+  const PaymentStatus = IDL.Variant({ 'paid' : IDL.Null, 'unpaid' : IDL.Null });
+  const ApplicationId = IDL.Text;
   const Application = IDL.Record({
     'status' : Status,
-    'applicationId' : IDL.Text,
+    'paymentStatus' : PaymentStatus,
+    'applicationId' : ApplicationId,
     'date' : IDL.Text,
     'name' : IDL.Text,
     'email' : IDL.Text,
     'address' : IDL.Text,
+    'stripePaymentId' : IDL.Opt(IDL.Text),
     'phone' : IDL.Text,
+    'certificateIssued' : IDL.Bool,
     'course' : IDL.Text,
-  });
-  const Course = IDL.Record({
-    'title' : IDL.Text,
-    'duration' : IDL.Text,
-    'icon' : IDL.Text,
-    'description' : IDL.Text,
-    'category' : IDL.Text,
   });
   const Inquiry = IDL.Record({
     'name' : IDL.Text,
@@ -112,41 +192,85 @@ export const idlFactory = ({ IDL }) => {
     'phone' : IDL.Text,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const StripeSessionStatus = IDL.Variant({
+    'completed' : IDL.Record({
+      'userPrincipal' : IDL.Opt(IDL.Text),
+      'response' : IDL.Text,
+    }),
+    'failed' : IDL.Record({ 'error' : IDL.Text }),
+  });
+  const StripeConfiguration = IDL.Record({
+    'allowedCountries' : IDL.Vec(IDL.Text),
+    'secretKey' : IDL.Text,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addCourse' : IDL.Func([Course], [], []),
     'approveApplication' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createCheckoutSession' : IDL.Func(
+        [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'createDefaultCheckoutSession' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'deleteCourse' : IDL.Func([IDL.Text], [], []),
     'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
-    'getAllApplicationsByStatus' : IDL.Func(
-        [Status],
-        [IDL.Vec(Application)],
+    'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
+    'getApplicationByEmail' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(Application)],
         ['query'],
       ),
-    'getAllCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
-    'getAllInquiries' : IDL.Func([], [IDL.Vec(Inquiry)], ['query']),
-    'getApplicationStatus' : IDL.Func([IDL.Text], [Status], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCourse' : IDL.Func([IDL.Text], [Course], ['query']),
+    'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+    'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCertificateIssued' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'issueCertificate' : IDL.Func([IDL.Text], [], []),
     'rejectApplication' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'submitApplication' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-        [],
-        [],
-      ),
+    'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'submitApplication' : IDL.Func([Application], [ApplicationId], []),
     'submitInquiry' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [],
         [],
       ),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
+    'updateCourse' : IDL.Func([Course], [], []),
+    'updatePaymentStatus' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   });
 };
 
